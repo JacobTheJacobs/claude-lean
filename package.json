@@ -1,0 +1,49 @@
+{
+  "name": "claude-lean",
+  "version": "0.2.0",
+  "description": "Cut Claude Code costs ~65% on long sessions. Local hooks: long-session guard, output filter, cache guard, daily cap, usage report. Open source, no telemetry.",
+  "bin": {
+    "claude-lean": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "hooks/",
+    "tools/",
+    "skills/",
+    "agents/",
+    "install.sh",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "!**/__pycache__"
+  ],
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -v && node --test tests/cli.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "llm",
+    "tokens",
+    "cost",
+    "hooks",
+    "agents",
+    "context"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JacobTheJacobs/claude-lean.git"
+  },
+  "bugs": "https://github.com/JacobTheJacobs/claude-lean/issues",
+  "homepage": "https://github.com/JacobTheJacobs/claude-lean#readme",
+  "author": "JacobTheJacobs",
+  "license": "MIT"
+}

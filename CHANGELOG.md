@@ -1,0 +1,31 @@
+# Changelog
+
+## [0.2.0] - 2026-11-19
+
+### Added
+- Handoff: the `handoff` skill saves a short note before `/clear`; `hooks/handoff_hook.py` loads it into the next
+  session in the same folder once. The long-session guard now suggests it.
+- `claude-lean memory`: what the memory index and CLAUDE.md cost on every request, per project.
+- Slim, on by default: `init` sets six `CLAUDE_CODE_DISABLE_*` switches that drop ~24K tokens of unused feature
+  definitions from every request (49.5K -> 24.9K). Short tasks -32%, 15/15 passed in both. `--no-slim` skips it.
+- `claude-lean lite`: starts Claude Code with only the core tools, no MCP, no skills. Short tasks -74%
+  ($0.0081 -> $0.0021 per task on Haiku 5.5, 15/15 passed in both).
+- `evals/vs.py`: head to head with JFrog Boost (plain, jfrog, lean, lean+jfrog).
+- npm package: `npx claude-lean init`, plus `uninstall`, `report`, `stats`, `get`, `doctor`.
+- Output filter (`hooks/squeeze_hook.py`, `tools/squeeze.py`): trims noisy npm, pip, cargo, go, docker and make output and
+  keeps every error and summary line. Originals are saved locally and come back with `claude-lean get <id>`. A tool's
+  filter turns itself off after its originals are fetched 3 times.
+- The installer now merges the hooks into `~/.claude/settings.json` for you, with a backup first, `--dry-run`,
+  `--uninstall` and `--no-filter`. Safe to re-run. `LEAN_DAY_USD=N` adds the daily cap.
+- Tests (Python unittest + node:test) and CI on Linux and macOS.
+- Eval: `--budget` dollar cap per session (default $2), Haiku default, `evals/filter.py`.
+
+### Changed
+- Renamed from Claude Boost to Claude Lean. Env vars are now `LEAN_*`, the cache is `~/.cache/claude-lean`, and
+  `tools/boost.py` is now `tools/report.py`.
+
+## [0.1.0] - 2026-11-12
+
+### Added
+- Long-session guard, cache guard, daily budget hook, usage report, lean skill and Haiku reader agent.
+- Long-session eval on Opus 5.5: -65% per 10-task session, 20/20 tasks passed in both setups.

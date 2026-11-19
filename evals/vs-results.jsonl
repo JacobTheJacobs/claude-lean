@@ -1,0 +1,12 @@
+{"suite": "noisy", "arm": "plain", "rep": 0, "step": 0, "task": "pytest", "pass": true, "usd": 0.00651486, "seconds": 15.0, "error": false, "prompt": 186191, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "plain", "rep": 0, "step": 0, "task": "make", "pass": true, "usd": 0.006932880000000001, "seconds": 16.1, "error": false, "prompt": 229986, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "lean", "rep": 0, "step": 0, "task": "pytest", "pass": true, "usd": 0.005739800000000001, "seconds": 12.5, "error": false, "prompt": 138240, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "lean", "rep": 0, "step": 0, "task": "make", "pass": true, "usd": 0.00708383, "seconds": 17.2, "error": false, "prompt": 232848, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "plain", "rep": 1, "step": 0, "task": "pytest", "pass": true, "usd": 0.0057453, "seconds": 12.6, "error": false, "prompt": 138240, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "plain", "rep": 1, "step": 0, "task": "make", "pass": true, "usd": 0.0071115, "seconds": 15.7, "error": false, "prompt": 232718, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "lean", "rep": 1, "step": 0, "task": "pytest", "pass": true, "usd": 0.006529760000000001, "seconds": 14.4, "error": false, "prompt": 186241, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "lean", "rep": 1, "step": 0, "task": "make", "pass": true, "usd": 0.0068914300000000005, "seconds": 16.1, "error": false, "prompt": 229959, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "plain", "rep": 2, "step": 0, "task": "pytest", "pass": true, "usd": 0.00588006, "seconds": 13.9, "error": false, "prompt": 185744, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "plain", "rep": 2, "step": 0, "task": "make", "pass": true, "usd": 0.006382030000000001, "seconds": 15.0, "error": false, "prompt": 230137, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "lean", "rep": 2, "step": 0, "task": "pytest", "pass": true, "usd": 0.005729430000000001, "seconds": 14.2, "error": false, "prompt": 186351, "model": "claude-haiku-5-5", "at": "2026-11-19"}
+{"suite": "noisy", "arm": "lean", "rep": 2, "step": 0, "task": "make", "pass": true, "usd": 0.0061708, "seconds": 15.2, "error": false, "prompt": 231008, "model": "claude-haiku-5-5", "at": "2026-11-19"}

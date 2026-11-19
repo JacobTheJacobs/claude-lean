@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Claude Boost usage report: where your Claude Code tokens and dollars went, from the local session logs.
+"""Claude Lean usage report: where your Claude Code tokens and dollars went, from the local session logs.
 
-    python3 tools/boost.py                 last 7 days, all projects
-    python3 tools/boost.py --days 1        today and yesterday
-    python3 tools/boost.py --project NAME  only projects whose folder name contains NAME
-    python3 tools/boost.py --today-usd     print today's list-price dollars only (used by hooks/budget.py)
+    python3 tools/report.py                 last 7 days, all projects
+    python3 tools/report.py --days 1        today and yesterday
+    python3 tools/report.py --project NAME  only projects whose folder name contains NAME
+    python3 tools/report.py --today-usd     print today's list-price dollars only (used by hooks/budget.py)
 
 Reads ~/.claude/projects/*/*.jsonl and each session's subagents/*.jsonl. Each API message is counted once, at its last
 logged usage. Dollars are list prices (below); a subscription is billed differently, so treat them as relative weight.
@@ -136,7 +136,7 @@ def main():
     t = usd["total"] or 1
     prompt = tok["input"] + tok["cache read"] + tok["cache write"]
     hit = tok["cache read"] / prompt if prompt else 0
-    print(f"Claude Boost report, last {a.days} days: ${usd['total']:.2f} list price, {len(rows)} requests")
+    print(f"Claude Lean report, last {a.days} days: ${usd['total']:.2f} list price, {len(rows)} requests")
     print(f"cache read share of input: {hit:.0%}  (Anthropic: agent loops ~84%; look into it below 80%)")
     avg = prompt / len(rows)
     print(f"average prompt per request: {avg / 1000:.0f}K tokens (every request re-reads it)")

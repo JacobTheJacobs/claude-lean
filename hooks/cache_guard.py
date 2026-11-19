@@ -15,7 +15,7 @@ def main():
     d = json.load(sys.stdin)
     f = (d.get("tool_input") or {}).get("file_path") or ""
     if Path(f).name in WATCH:
-        print(json.dumps({"systemMessage": f"Claude Boost: editing {Path(f).name} changes the cached prompt start; the next request re-writes the whole context to cache. If it can wait, make it between sessions."}))
+        print(json.dumps({"systemMessage": f"Claude Lean: editing {Path(f).name} changes the cached prompt start; the next request re-writes the whole context to cache. If it can wait, make it between sessions."}))
 
 
 if __name__ == "__main__":
