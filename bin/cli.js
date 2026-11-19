@@ -23,6 +23,8 @@ const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions
   claude-lean stats                                       what the output filter saved
   claude-lean get <id>                                    full original of a trimmed output
   claude-lean memory                                      what your memory and CLAUDE.md cost per request
+  claude-lean audit [--days N] [--disable-unused | --disable NAME.. | --restore [NAME..]]
+                                                          skills and MCP servers you load but never use
   claude-lean doctor                                      check python3, install folder, hooks
   claude-lean lite [--keep-mcp] [--keep-skills] [claude args]
                                                           start Claude Code with only the core tools: ~74% cheaper
@@ -98,6 +100,8 @@ function main() {
       return run(needPython(), [installed("tools/report.py"), ...rest]);
     case "stats":
       return run(needPython(), [installed("tools/squeeze.py"), "stats"]);
+    case "audit":
+      return run(needPython(), [installed("tools/audit.py"), ...rest]);
     case "memory":
       return run(needPython(), [installed("tools/memcheck.py")]);
     case "get":

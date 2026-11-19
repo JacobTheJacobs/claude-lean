@@ -3,6 +3,8 @@
 ## [0.2.0] - 2026-11-19
 
 ### Added
+- `claude-lean audit`: skills and MCP servers loaded on every request but unused in your logs; park unused skills
+  reversibly (`--disable-unused`, `--restore`). Saving is small (~200 tokens for 23 skills): Claude Code caps the listing.
 - Handoff: the `handoff` skill saves a short note before `/clear`; `hooks/handoff_hook.py` loads it into the next
   session in the same folder once. The long-session guard now suggests it.
 - `claude-lean memory`: what the memory index and CLAUDE.md cost on every request, per project.

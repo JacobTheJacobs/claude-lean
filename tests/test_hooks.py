@@ -143,6 +143,30 @@ class Handoff(unittest.TestCase):
             self.assertIsNone(hook("handoff_hook.py", {"source": "compact", "cwd": proj}, env))
 
 
+class Audit(unittest.TestCase):
+    def test_finds_unused_and_parks_reversibly(self):
+        with tempfile.TemporaryDirectory() as home:
+            h = Path(home)
+            for name in ("used-one", "never-used"):
+                (h / ".claude/skills" / name).mkdir(parents=True)
+                (h / ".claude/skills" / name / "SKILL.md").write_text(f"---\nname: {name}\ndescription: does {name}\n---\n")
+            log = h / ".claude/projects/p/s.jsonl"
+            log.parent.mkdir(parents=True)
+            log.write_text(json.dumps({"message": {"content": [
+                {"type": "tool_use", "name": "Skill", "input": {"skill": "used-one"}},
+                {"type": "tool_use", "name": "mcp__srv__do", "input": {}}]}}) + "\n")
+            env = {"HOME": home}
+            out = run(ROOT / "tools/audit.py", env=env).stdout
+            self.assertIn("never-used   <- unused", out)
+            self.assertNotIn("used-one   <- unused", out)
+            run(ROOT / "tools/audit.py", env=env, args=("--disable-unused",))
+            self.assertFalse((h / ".claude/skills/never-used").exists())
+            self.assertTrue((h / ".claude/skills-disabled/never-used/SKILL.md").exists())
+            self.assertTrue((h / ".claude/skills/used-one").exists())
+            run(ROOT / "tools/audit.py", env=env, args=("--restore",))
+            self.assertTrue((h / ".claude/skills/never-used/SKILL.md").exists())
+
+
 class Installer(unittest.TestCase):
     def install(self, d, *args, env=None):
         e = {**os.environ, "CLAUDE_DIR": d, **(env or {})}
