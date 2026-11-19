@@ -12,6 +12,7 @@ If the agent fetches the original of one tool LEAN_SQUEEZE_GIVEUP times (default
 import json
 import os
 import re
+import shlex
 import sys
 import time
 from pathlib import Path
@@ -98,32 +99,38 @@ def squeeze(lines):
 
 def cmd_filter(tool):
     data = sys.stdin.buffer.read().decode("utf-8", "replace")
+    try:
+        out = filtered(tool, data)
+    except Exception:                                        # a broken filter must never cost the command's output
+        out = data
+    sys.stdout.write(out)
+
+
+def filtered(tool, data):
     s = load()
     lines = clean(data)
     if tool in s.get("off", []) or len(lines) < MIN:
-        sys.stdout.write(data)
-        return
+        return data
     kept = squeeze(lines)
     out = "\n".join(kept).strip("\n")
     if len(out) >= len(data) * 0.9:
-        sys.stdout.write(data)
-        return
+        return data
     OUT.mkdir(parents=True, exist_ok=True)
+    OUT.chmod(0o700)                                         # saved outputs can hold secrets: owner only
     rid = f"{int(time.time() * 1000) % 10**9:09d}"
     (OUT / f"{rid}.log").write_text(data)
     for old in sorted(OUT.glob("*.log"), key=lambda p: p.stat().st_mtime)[:-KEEP_FILES]:
         old.unlink(missing_ok=True)
-    t = s["tools"].setdefault(tool, {"runs": 0, "chars_in": 0, "chars_out": 0, "gets": 0})
+    t = s.setdefault("tools", {}).setdefault(tool, {"runs": 0, "chars_in": 0, "chars_out": 0, "gets": 0})
     t["runs"] += 1
     t["chars_in"] += len(data)
     t["chars_out"] += len(out)
-    s["ids"][rid] = tool
+    s.setdefault("ids", {})[rid] = tool
     s["ids"] = dict(list(s["ids"].items())[-KEEP_FILES:])
     save(s)
     pct = round(100 * (1 - len(out) / max(len(data), 1)))
-    print(out)
-    print(f"[Claude Lean trimmed {pct}% of this output ({len(lines)} -> {len(kept)} lines). "
-          f"Full original: python3 {ME} get {rid}]")
+    return (f"{out}\n[Claude Lean trimmed {pct}% of this output ({len(lines)} -> {len(kept)} lines). "
+            f"Full original: python3 {shlex.quote(str(ME))} get {rid}]\n")
 
 
 def cmd_get(rid):
@@ -141,7 +148,7 @@ def cmd_get(rid):
         if t["gets"] >= GIVEUP and tool not in s.setdefault("off", []):
             s["off"].append(tool)
             print(f"\n[Claude Lean: the {tool} filter hid too much {t['gets']} times; it is now off. "
-                  f"Re-enable: python3 {ME} on {tool}]")
+                  f"Re-enable: python3 {shlex.quote(str(ME))} on {tool}]")
         save(s)
 
 

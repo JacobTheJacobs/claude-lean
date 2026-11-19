@@ -52,11 +52,13 @@ npx claude-lean lite --keep-mcp   # keep your MCP servers (--keep-skills keeps s
 | Full setup | 15/15 | $0.0081 | ~49.5K |
 | **`claude-lean lite`** | **15/15** | **$0.0021 (-74%)** | ~20K |
 
+On a clean install (no MCP servers or skills), the first request drops from 17.2K to 5.4K tokens (o200k tokenizer, Claude Code 2.1.239, measured the way [hibench](https://hibench.dev/rankings/) does). Since 0.2.1 `lite` also applies the slim switches.
+
 Bug fix, new function, code lookup, log count, find a definition; 2026-11-19. Use it for quick jobs; start normally when you need web, MCP or skills.
 
 ## Why it works
 
-Every request re-sends the whole session. By task 10 of a long session, each request re-reads ~175K tokens of old history, and that re-reading is most of the bill, not the code written. Starting fresh per task keeps each request near Claude Code's ~16K-token baseline.
+Every request re-sends the whole session. By task 10 of a long session, each request re-reads ~175K tokens of old history, and that re-reading is most of the bill, not the code written. Starting fresh per task keeps each request near the starting size: about 17K tokens on a clean install, more with MCP servers and skills.
 
 So Claude Lean watches the session size and tells you when a fresh start pays off. On short sessions it stays silent and costs nothing.
 
@@ -169,7 +171,7 @@ Without npm: `git clone https://github.com/JacobTheJacobs/claude-lean.git && cla
 ## Habits that save the most
 
 1. **`/clear` between unrelated tasks.** The measured 65%. Mid-task, say "handoff" first so the next session picks up where you left off.
-2. **`/compact` early** when you stay on one task. Long contexts are re-read on every request.
+2. **`/compact` by hand** when one task has to stay in one long session. Forcing automatic compaction earlier did not pay in our test (+35%, see above).
 3. **Don't edit CLAUDE.md, settings, model or effort mid-session.** Each change re-writes the whole cached prompt; Anthropic measured 20-50x the cost of the same text sent as a message.
 4. **Ask for short answers.** Output costs 5x input.
 5. **Run `npx claude-lean report --days 7` weekly.** If cache reads dominate, your sessions are too long.
@@ -180,13 +182,15 @@ Sources: Anthropic's [cost guide](https://platform.claude.com/docs/en/about-clau
 
 **Why is my Claude Code bill high when I write little code?** Each request re-reads the whole context. A 300K-token session re-read 50 times is 15M tokens.
 
-**Does it help short tasks?** No, and it doesn't cost them anything either. A short task has no long context to cut.
+**Does it help short tasks?** The long-session guard does nothing there. Slim (-32%) and `claude-lean lite` (-74%) do: they cut the fixed overhead every request carries.
+
+**Does the output filter change exit codes?** Yes. A filtered command runs through a pipe, so Claude sees the filter's exit code (0) even when tests fail. Every error and summary line is kept, so the failure still shows in the output. `--no-filter` skips the filter; dev servers and watchers are never filtered.
 
 **Can I use Haiku for subagents?** Yes, with a named agent file (`model: haiku`) like `agents/reader.md`. `fork` subagents always use your main model.
 
 ## Privacy
 
-Everything runs on your machine. No network calls, no telemetry. `report.py` reads `~/.claude/projects`; the hooks read stdin and print one line.
+Everything runs on your machine. No network calls, no telemetry. `report.py` and `audit.py` read `~/.claude/projects`. The output filter keeps the last 200 trimmed command outputs in `~/.cache/claude-lean/out` (owner-only), and a handoff note stays in `~/.cache/claude-lean/handoff` until it is used or 12 hours pass. `uninstall` deletes that folder.
 
 ## Contributing
 

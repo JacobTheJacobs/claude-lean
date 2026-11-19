@@ -9,10 +9,13 @@
 Reads ~/.claude/projects/*/*.jsonl and each session's subagents/*.jsonl. Each API message is counted once, at its last
 logged usage. Dollars are list prices (below); a subscription is billed differently, so treat them as relative weight.
 Standard library only."""
+from __future__ import annotations
+
 import argparse
 import collections
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -46,12 +49,12 @@ def messages(path: Path):
     """Last usage snapshot per API message id in one transcript."""
     last = {}
     try:
-        lines = path.open(errors="replace")
+        lines = path.open("rb")          # bytes: transcripts reach gigabytes, and decoding every line is the slow part
     except OSError:
         return []
     with lines:
         for line in lines:
-            if '"usage"' not in line:
+            if b'"usage"' not in line:
                 continue
             try:
                 d = json.loads(line)
@@ -96,9 +99,76 @@ def collect(days: int, project: str | None):
     return rows
 
 
-def today_usd(project: str | None) -> float:
-    start = dt.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).astimezone(dt.timezone.utc).isoformat()
-    return sum(cost(m, u) for _, _, _, ts, m, u in collect(1, project) if ts >= start)
+TS = re.compile(rb'"timestamp":"([^"]+)"')
+
+
+def seek_to(fh, size: int, start: str) -> int:
+    """Offset of a line boundary shortly before the first line stamped at or after `start` (lines are in time order).
+    Binary search, so a multi-gigabyte transcript costs a few dozen line reads instead of a full scan."""
+    lo, hi = 0, size
+    while hi - lo > 1_000_000:
+        mid = (lo + hi) // 2
+        fh.seek(mid)
+        fh.readline()                                  # skip the partial line
+        ts = None
+        for _ in range(200):                           # some lines carry no timestamp: look a little further
+            line = fh.readline()
+            if not line:
+                break
+            m = TS.search(line)
+            if m:
+                ts = m.group(1).decode()
+                break
+        if ts is not None and ts < start:
+            lo = mid
+        else:
+            hi = mid
+    fh.seek(lo)
+    if lo:
+        fh.readline()
+    return fh.tell()
+
+
+def today_usd(project: str | None, state: dict | None = None) -> float:
+    """Today's list-price dollars. `state` (kept by hooks/budget.py between prompts) remembers how far each transcript
+    was read, so each call reads only what was appended since the last one."""
+    midnight = dt.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    start = midnight.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    state = {} if state is None else state
+    total = 0.0
+    for proj in sorted(ROOT.glob("*")):
+        if project and project not in proj.name:
+            continue
+        for f in list(proj.glob("*.jsonl")) + list(proj.glob("*/subagents/*.jsonl")):
+            try:
+                st = f.stat()
+                if st.st_mtime < midnight.timestamp():
+                    continue
+                e = state.get(str(f))
+                if not e or e["off"] > st.st_size:
+                    e = state[str(f)] = {"off": -1, "ids": {}}
+                with f.open("rb") as fh:
+                    if e["off"] < 0:
+                        e["off"] = seek_to(fh, st.st_size, start)
+                    fh.seek(e["off"])
+                    for line in fh:
+                        if not line.endswith(b"\n"):
+                            break                      # half-written last line: read it next time
+                        e["off"] += len(line)
+                        if b'"usage"' not in line:
+                            continue
+                        try:
+                            d = json.loads(line)
+                        except ValueError:
+                            continue
+                        m = d.get("message") or {}
+                        u = m.get("usage")
+                        if isinstance(u, dict) and m.get("model") and d.get("timestamp", "") >= start:
+                            e["ids"][m.get("id") or d.get("uuid")] = cost(m["model"], u)
+            except OSError:
+                continue
+            total += sum(e["ids"].values())
+    return total
 
 
 def main():

@@ -1,6 +1,4 @@
 .cfg/
 .global-backup/
 runs/
-ext
-pohuy_style.md
 run*.log

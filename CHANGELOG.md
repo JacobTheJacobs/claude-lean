@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.1] - 2026-11-20
+
+### Fixed
+- `report` and the daily cap crashed on Python 3.8 and 3.9 (`str | None` needs 3.10). Tests now run on 3.8.
+- The output filter no longer touches commands that keep running (`npm run dev`, `npm start`, `--watch`, `cargo run`,
+  `docker compose up`): it prints only after exit, so their output was hidden. `npm run` is filtered only for
+  build, test, lint and check scripts; `uv run pytest` and `poetry run pytest` are now filtered.
+- If the filter fails (full disk, broken cache), the command's output passes through unchanged.
+- Install folders with spaces (`/Users/John Doe`) work: hook commands and the handoff skill quote their paths.
+- The daily cap reads only what was appended to each transcript since the last check, instead of re-reading every
+  log (seconds to minutes on multi-gigabyte logs).
+- CI runs on `master`.
+
+### Changed
+- `lite` also applies the slim switches (first request on a clean install: 17.2K -> 5.4K tokens).
+- `uninstall` removes `~/.cache/claude-lean` (saved outputs, handoff notes). Saved outputs are owner-only.
+
 ## [0.2.0] - 2026-11-19
 
 ### Added

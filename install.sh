@@ -11,7 +11,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import json, os, shutil, sys, time
+import json, os, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
@@ -22,7 +22,7 @@ if unknown or args & {"-h", "--help"}:
 dry, un = "--dry-run" in args, "--uninstall" in args
 cdir = Path(os.environ.get("CLAUDE_DIR", Path.home() / ".claude"))
 settings_f = cdir / "settings.json"
-py = lambda p: f"python3 {here / p}"
+py = lambda p: f"python3 {shlex.quote(str(here / p))}"    # quoted: home folders can contain spaces
 
 hooks = {"UserPromptSubmit": [("", py("hooks/session_guard.py"))],
          "SessionStart": [("", py("hooks/handoff_hook.py"))],
@@ -32,7 +32,7 @@ if "--no-filter" not in args:
 if os.environ.get("LEAN_DAY_USD"):
     cap = float(os.environ["LEAN_DAY_USD"])          # baked into the hook command: hooks don't see your shell env
     hooks["UserPromptSubmit"].append(("", f"LEAN_DAY_USD={cap:g} " + py("hooks/budget.py")))
-allow = [f"Bash(python3 {here}/tools/squeeze.py *)"] if "--no-filter" not in args else []
+allow = [f"Bash({py('tools/squeeze.py')} *)"] if "--no-filter" not in args else []
 # Slim: Claude Code features most sessions never use, whose definitions ride along in every request.
 # Measured per request: Artifact 13.5K, Workflows 8.1K, git instructions 2.4K, background tasks 1.1K, cron 0.3K,
 # advisor 0.2K tokens. Your MCP servers, skills, web tools and subagents stay.
@@ -130,7 +130,7 @@ if not un and os.environ.get("LEAN_VIA_NPX"):
           "  undo:            npx claude-lean uninstall")
 elif not un:
     print(f"\nDone. Hooks apply to new Claude Code sessions.\n"
-          f"  savings report:  python3 {here}/tools/report.py --days 7\n"
-          f"  filter stats:    python3 {here}/tools/squeeze.py stats\n"
+          f"  savings report:  {py('tools/report.py')} --days 7\n"
+          f"  filter stats:    {py('tools/squeeze.py')} stats\n"
           f"  undo:            {here}/install.sh --uninstall")
 PY

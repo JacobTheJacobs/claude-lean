@@ -32,7 +32,8 @@ def main():
         c = {}
     if c.get("day") != day or now - c.get("at", 0) > float(os.environ.get("LEAN_EVERY", 300)):
         import report
-        c = {"day": day, "at": now, "usd": report.today_usd(proj)}
+        files = c.get("files", {}) if c.get("day") == day else {}     # how far each transcript was read today
+        c = {"day": day, "at": now, "usd": report.today_usd(proj, files), "files": files}
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(c))
     usd = c["usd"]

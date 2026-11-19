@@ -13,6 +13,7 @@ const VERSION = require(path.join(PKG, "package.json")).version;
 const PARTS = ["hooks", "tools", "skills", "agents", "install.sh", "LICENSE"];
 // Lite mode: every request re-sends all tool definitions, MCP servers and skill descriptions. A short task needs few of
 // them. Measured on 5 short tasks x 3 (Haiku 5.5): 49.5K -> ~20K tokens per request, $0.0081 -> $0.0021, 15/15 both.
+// Clean install, first request (o200k tokens): 17.2K plain -> 5.4K lite.
 const LITE_TOOLS = process.env.LEAN_LITE_TOOLS || "Read,Edit,Write,Bash,Grep,Glob,Agent,TodoWrite";
 // Same switches as `install.sh` slim: features most sessions never use, each costing tokens on every request.
 const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL"]
@@ -20,7 +21,8 @@ const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS
 
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions
 
-  claude-lean init [--dry-run] [--reader] [--no-filter]   install hooks into ~/.claude (backup first, re-runnable)
+  claude-lean init [--dry-run] [--reader] [--no-filter] [--no-slim]
+                                                          install hooks into ~/.claude (backup first, re-runnable)
   claude-lean uninstall [--reader]                        remove everything it added
   claude-lean report [--days N] [--project NAME]          where your tokens and dollars went
   claude-lean stats                                       what the output filter saved
@@ -96,6 +98,11 @@ function main() {
       if (process.exitCode === 0 && !rest.includes("--dry-run") && path.resolve(HOME) !== PKG) {
         fs.rmSync(HOME, { recursive: true, force: true });
         console.log(`removed ${HOME}`);
+        const cache = process.env.LEAN_CACHE || path.join(os.homedir(), ".cache", "claude-lean");
+        if (fs.existsSync(cache)) {
+          fs.rmSync(cache, { recursive: true, force: true }); // saved command outputs, handoff notes, filter stats
+          console.log(`removed ${cache}`);
+        }
       }
       return;
     }

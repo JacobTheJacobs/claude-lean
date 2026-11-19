@@ -3,7 +3,7 @@
 
 CLAUDE.md files and Claude Code settings sit at the start of every request. Editing one mid-session changes that
 prefix, so the next request writes the full context to cache again instead of reading it (Anthropic measured a
-system-prompt edit at 25-50x the cost of the same text sent as a message). It only warns; the edit goes ahead."""
+system-prompt edit at 20-50x the cost of the same text sent as a message). It only warns; the edit goes ahead."""
 import json
 import sys
 from pathlib import Path

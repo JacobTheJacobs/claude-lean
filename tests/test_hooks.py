@@ -47,6 +47,19 @@ class Squeeze(unittest.TestCase):
         self.assertNotIn("test_5 PASSED", out)
         self.assertLess(len(out), len(PYTEST_LOG) / 5)
 
+    def test_broken_cache_passes_output_through(self):
+        blocker = Path(self.tmp.name) / "file"
+        blocker.write_text("x")                      # the cache path is a file: saving the original must fail
+        r = run(SQUEEZE, PYTEST_LOG, {"LEAN_CACHE": str(blocker)}, ("filter", "pytest"))
+        self.assertEqual(r.stdout, PYTEST_LOG)
+        self.assertEqual(r.stderr, "")
+
+    def test_no_3_10_only_syntax_at_import(self):
+        for f in list((ROOT / "tools").glob("*.py")) + list((ROOT / "hooks").glob("*.py")):
+            src = f.read_text()
+            if " | None" in src:
+                self.assertIn("from __future__ import annotations", src, f.name)
+
     def test_short_output_untouched(self):
         text = "line\n" * 10
         self.assertEqual(self.squeeze(text), text)
@@ -92,6 +105,13 @@ class SqueezeHook(unittest.TestCase):
     def test_leaves_others(self):
         for cmd in ("git status", "npm ls", "ls -la", "pytest | head", "pytest && rm x", "make > log", "echo $(pytest)"):
             self.assertIsNone(self.rewrite(cmd), cmd)
+
+    def test_long_running_left_alone(self):
+        for cmd in ("npm run dev", "npm start", "pnpm run serve", "cargo run", "jest --watch", "tsc -w",
+                    "docker compose up", "docker-compose up", "uv run app.py", "npm run storybook"):
+            self.assertIsNone(self.rewrite(cmd), cmd)
+        for cmd in ("npm run build", "npm run test:unit", "uv run pytest -x", "poetry run pytest", "yarn run lint"):
+            self.assertTrue(self.rewrite(cmd), cmd)
 
     def test_no_permission_decision(self):
         r = hook("squeeze_hook.py", {"tool_name": "Bash", "tool_input": {"command": "pytest"}})
@@ -217,6 +237,34 @@ class Installer(unittest.TestCase):
     def test_bad_flag(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertNotEqual(self.install(d, "--nope").returncode, 0)
+
+
+class Budget(unittest.TestCase):
+    def test_today_usd_reads_only_new_lines(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import datetime as dt
+        import report
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+
+        def line(i):
+            return json.dumps({"timestamp": now, "message": {"id": f"m{i}", "model": "claude-opus-5-5",
+                               "usage": {"input_tokens": 1_000_000, "output_tokens": 0}}}) + "\n"
+        with tempfile.TemporaryDirectory() as d:
+            old_root, report.ROOT = report.ROOT, Path(d)
+            try:
+                t = Path(d) / "proj" / "s.jsonl"
+                t.parent.mkdir()
+                t.write_text(line(1))
+                state = {}
+                one = report.today_usd(None, state)
+                self.assertGreater(one, 0)
+                self.assertEqual(report.today_usd(None, state), one)          # nothing new: same total
+                with t.open("a") as f:
+                    f.write(line(2) + line(2))                                # same message id twice: counted once
+                self.assertAlmostEqual(report.today_usd(None, state), 2 * one)
+                self.assertAlmostEqual(report.today_usd(None), 2 * one)       # a cold read agrees
+            finally:
+                report.ROOT = old_root
 
 
 if __name__ == "__main__":
