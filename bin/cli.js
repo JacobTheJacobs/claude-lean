@@ -14,6 +14,9 @@ const PARTS = ["hooks", "tools", "skills", "agents", "install.sh", "LICENSE"];
 // Lite mode: every request re-sends all tool definitions, MCP servers and skill descriptions. A short task needs few of
 // them. Measured on 5 short tasks x 3 (Haiku 5.5): 49.5K -> ~20K tokens per request, $0.0081 -> $0.0021, 15/15 both.
 const LITE_TOOLS = process.env.LEAN_LITE_TOOLS || "Read,Edit,Write,Bash,Grep,Glob,Agent,TodoWrite";
+// Same switches as `install.sh` slim: features most sessions never use, each costing tokens on every request.
+const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL"]
+  .map((k) => `CLAUDE_CODE_DISABLE_${k}`);
 
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions
 
@@ -127,7 +130,9 @@ function main() {
       const args = ["--tools", LITE_TOOLS];
       if (!keepMcp) args.push("--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}');
       if (!keepSkills) args.push("--disable-slash-commands");
-      const r = spawnSync(process.env.LEAN_CLAUDE || "claude", [...args, ...pass], { stdio: "inherit" });
+      const env = { ...process.env };
+      for (const k of SLIM_ENV) if (env[k] === undefined) env[k] = "1";
+      const r = spawnSync(process.env.LEAN_CLAUDE || "claude", [...args, ...pass], { stdio: "inherit", env });
       if (r.error) console.error(`could not start claude: ${r.error.message}`);
       process.exitCode = r.status ?? 1;
       return;
