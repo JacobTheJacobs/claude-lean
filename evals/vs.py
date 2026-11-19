@@ -118,7 +118,8 @@ def long_session(arm, rep, a, jf):
                "--max-budget-usd", f"{left:.2f}", *flags(arm, jf)]
         fresh = arm.startswith("lean")
         if fresh:
-            cmd += ["--no-session-persistence"]
+            if not os.environ.get("LEAN_KEEP_SESSIONS"):           # set it to keep transcripts for a post-mortem
+                cmd += ["--no-session-persistence"]
         elif sid:
             cmd += ["--resume", sid]
         r, m = call(cmd, d)
@@ -127,7 +128,7 @@ def long_session(arm, rep, a, jf):
         ok = json.loads(subprocess.run([sys.executable, str(HERE / "check.py"), task["id"], str(d)],
                                        capture_output=True, text=True).stdout)["pass"]
         ans = next((f.read_text()[:300] for f in (d / "ANSWER.txt", d / "ANSWER.json") if f.is_file()), None)
-        rows.append({**row, "pass": ok, **m, "answer": None if ok else ans})
+        rows.append({**row, "pass": ok, **m, "answer": None if ok else ans, "session": r.get("session_id")})
         print(json.dumps(rows[-1]), flush=True)
         (d / "ANSWER.txt").unlink(missing_ok=True)
         (d / "ANSWER.json").unlink(missing_ok=True)

@@ -2,7 +2,7 @@
 
 ### Spend less. Keep the quality.
 
-Claude Lean cuts what Claude Code re-reads on every request: long session history, unused tool definitions, noisy test and build output. Long sessions cost 65% less on Opus 5.5 with the same tasks passed. Local, open source, no account, no telemetry.
+Claude Lean cuts what Claude Code re-reads on every request: long session history, unused tool definitions, noisy test and build output. Long sessions cost 65% less on Opus 5.5, short tasks 32% less (74% with `lite`), with the same tasks passed. Local, open source, no account, no telemetry.
 
 [![npm](https://img.shields.io/npm/v/claude-lean?color=cb3837&logo=npm)](https://www.npmjs.com/package/claude-lean)
 [![CI](https://github.com/JacobTheJacobs/claude-lean/actions/workflows/ci.yml/badge.svg)](https://github.com/JacobTheJacobs/claude-lean/actions/workflows/ci.yml)
@@ -21,12 +21,18 @@ Claude Lean cuts what Claude Code re-reads on every request: long session histor
 
 ## Result
 
-| 10 tasks in one session, Opus 5.5 | Tasks passed | Cost per session |
+| Long session: 10 tasks in a row, Opus 5.5 | Tasks passed | Cost |
 |---|:-:|--:|
 | Plain Claude Code | 20/20 | $4.97 |
 | **With Claude Lean** | **20/20** | **$1.74 (-65%)** |
 
-40 graded tasks, 2026-11-12. Details in [Benchmark](#benchmark).
+| Short task: one quick job, Haiku 5.5 | Tasks passed | Cost |
+|---|:-:|--:|
+| Plain Claude Code | 30/30 | $0.0078-0.0081 |
+| **With Claude Lean** (slim, on by default) | **15/15** | **$0.0053 (-32%)** |
+| **`npx claude-lean lite`** | **15/15** | **$0.0021 (-74%)** |
+
+Graded by script, 2026-11-12 and 2026-11-19. Each short-task setup is compared with plain in its own batch. Details in [Benchmark](#benchmark).
 
 > [!NOTE]
 > Every number on this page comes from a graded eval in [`evals/`](evals/) that you can re-run. Where a result went against us, it is here too.
@@ -143,10 +149,10 @@ Same graded tasks, same machine, Haiku 5.5. JFrog Boost v0.17.5 installed with `
 
 | 10-task session | Passed | Cost per session |
 |---|:-:|--:|
-| Plain Claude Code | 58/60 | $0.160 |
-| JFrog Boost | 35/40 | $0.173 (+8%) |
-| **Claude Lean** | 50/60 | **$0.051 (-68%)** |
-| **Claude Lean + JFrog Boost** | 38/40 | **$0.051 (-68%)** |
+| Plain Claude Code | 88/90 | $0.172 |
+| JFrog Boost | 35/40 | $0.173 (+3% vs plain in the same batches) |
+| **Claude Lean** | 80/90 | **$0.052 (-70%)** |
+| **Claude Lean + JFrog Boost** | 38/40 | **$0.051 (-70%)** |
 
 | Noisy output (400-test pytest, 350-line make) | Passed | Cost per task |
 |---|:-:|--:|
@@ -156,7 +162,7 @@ Same graded tasks, same machine, Haiku 5.5. JFrog Boost v0.17.5 installed with `
 | Claude Lean + JFrog Boost | 8/8 | $0.0047 (-17%) |
 
 - **Cost:** Claude Lean is about a third of the price. JFrog Boost cost a little more than plain Claude Code in both suites.
-- **Quality:** Claude Lean missed more in this suite: 8 of its 10 misses were counts over the 20,000-line log. On Opus 5.5 and in `evals/long.py` it passed every task; we are looking into the Haiku log counts.
+- **Quality:** all 10 of Claude Lean's misses came in the first two batches, 8 of them counts over the 20,000-line log. The two later batches passed 50/50, and Lean passed every task on Opus 5.5 and in `evals/long.py`. We count every batch above.
 - **Why JFrog saved nothing here:** its own local log (`history.db`) recorded 0 filtered commands across 95 sessions. Its terminal filter (`boost-cli-filtering`) was switched off by its remote feature flags on a fresh install.
 
 ### Tested and rejected
