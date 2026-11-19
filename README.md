@@ -19,6 +19,15 @@ Claude Lean cuts what Claude Code re-reads on every request: long session histor
 
 </div>
 
+## Result
+
+| 10 tasks in one session, Opus 5.5 | Tasks passed | Cost per session |
+|---|:-:|--:|
+| Plain Claude Code | 20/20 | $4.97 |
+| **With Claude Lean** | **20/20** | **$1.74 (-65%)** |
+
+40 graded tasks, 2026-11-12. Details in [Benchmark](#benchmark).
+
 > [!NOTE]
 > Every number on this page comes from a graded eval in [`evals/`](evals/) that you can re-run. Where a result went against us, it is here too.
 
