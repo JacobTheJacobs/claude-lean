@@ -126,7 +126,8 @@ def long_session(arm, rep, a, jf):
         spent += m["usd"]
         ok = json.loads(subprocess.run([sys.executable, str(HERE / "check.py"), task["id"], str(d)],
                                        capture_output=True, text=True).stdout)["pass"]
-        rows.append({**row, "pass": ok, **m})
+        ans = next((f.read_text()[:300] for f in (d / "ANSWER.txt", d / "ANSWER.json") if f.is_file()), None)
+        rows.append({**row, "pass": ok, **m, "answer": None if ok else ans})
         print(json.dumps(rows[-1]), flush=True)
         (d / "ANSWER.txt").unlink(missing_ok=True)
         (d / "ANSWER.json").unlink(missing_ok=True)

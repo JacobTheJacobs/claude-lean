@@ -97,6 +97,25 @@ python3 evals/filter.py --reps 3                                             # o
 
 Output filter, honestly: it cuts a 400-test pytest run or a 350-line `make` log by 90%+, but on a single task that is ~1% of the bill, because each request re-sends ~45K tokens of fixed overhead. The filter matters when big outputs pile up in a long session.
 
+## vs JFrog Boost
+
+Same graded tasks, same machine, Haiku 5.5, JFrog Boost v0.17.5 installed with `boost init --claude` in a throwaway HOME (2026-11-19, `evals/vs.py`):
+
+| 10-task session | Passed | $ per session |
+|---|:-:|--:|
+| Plain Claude Code | 18/20 | $0.193 |
+| JFrog Boost | 18/20 | $0.208 (+8%) |
+| **Claude Lean** | 15/20 | **$0.053 (-72%)** |
+| Claude Lean + JFrog Boost | 19/20 | $0.056 (-71%) |
+
+| Noisy output (400-test pytest, 350-line make) | Passed | $ per task |
+|---|:-:|--:|
+| Plain | 4/4 | $0.006 |
+| JFrog Boost | 4/4 | $0.008 (+49%) |
+| **Claude Lean** | 4/4 | $0.005 (-4%) |
+
+Lean's 15/20 was wrong counts in single runs; a rerun of the same suite scored plain 20/20 ($0.143), Lean 20/20 ($0.054, -63%). JFrog's own local log (`history.db`) recorded **0 filtered commands** across 95 sessions: its terminal filter (`boost-cli-filtering`) was switched off by its remote feature flags on a fresh install. Its trace spans held only a span type and a process id.
+
 ## Tested and rejected
 
 Measured on the 10-task session (2 sessions each, 2026-11-19), so you don't have to:
