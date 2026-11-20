@@ -9,9 +9,14 @@
   every suite, ahead of both; plain `init` -2% to -24%; caveman +7% to -21%; RTK -1% to -14% (Haiku 5.5, 170 tasks,
   all passed).
 
-### Changed
-- Slim's saving depends on how much your setup loads: -32% on short tasks with many skills and plugins, ~0 on a clean
-  install. The README says so.
+### Fixed
+- Evals launched from a machine with Claude Lean installed inherited its slim switches in every arm (Claude Code
+  exports settings `env` into the shells it starts). `evals/run.py` now strips them; the first five-way run is kept,
+  marked, and shown separately in the README.
+
+### Measured (clean setup, Haiku 5.5, every task passed)
+- `init`: short tasks -36%, noisy output -44%, long session +12% (noise). `lite`: -70%, -64%, -32%.
+- Real setup, fresh session's first request: 46,018 -> 29,179 tokens (-37%); warm-cache cost $0.0031 -> $0.0004.
 
 ## [0.2.3] - 2026-11-20
 

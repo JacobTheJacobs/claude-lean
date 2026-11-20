@@ -30,6 +30,11 @@ def step_usd(r, resumed, prev_total):
     return (max(total - prev_total, 0.0) if resumed else total), total
 
 
+# A machine with Claude Lean installed exports its slim switches into every shell Claude Code starts. Evals must not
+# inherit them, or every arm (plain included) silently runs with slim on. Arms that test slim add it back explicitly.
+for _k in [k for k in os.environ if k.startswith(("CLAUDE_CODE_DISABLE_", "CLAUDE_LEAN_"))]:
+    del os.environ[_k]
+
 # Run folders live outside the repo: an agent exploring a run folder must not find (and edit) the repo or its fixture.
 RUNS = Path(os.environ.get("LEAN_RUNS") or Path(tempfile.gettempdir()) / "claude-lean-evals")
 # Evals must not inherit the machine's own ~/.claude/settings.json (installed hooks, env switches): every arm starts
