@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `claude-lean report --compare [DATE]`: your own fresh sessions before vs after installing (first-request size,
+  cost per request and per session), from your logs.
+- `evals/compare.py`: Claude Lean vs caveman v4.1.0 vs RTK v1.2.1 on the same graded tasks. `lite` -44% to -61% in
+  every suite, ahead of both; plain `init` -2% to -24%; caveman +7% to -21%; RTK -1% to -14% (Haiku 5.5, 170 tasks,
+  all passed).
+
+### Changed
+- Slim's saving depends on how much your setup loads: -32% on short tasks with many skills and plugins, ~0 on a clean
+  install. The README says so.
+
 ## [0.2.3] - 2026-11-20
 
 ### Fixed: the long-session claim was wrong

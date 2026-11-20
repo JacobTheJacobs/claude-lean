@@ -171,15 +171,89 @@ def today_usd(project: str | None, state: dict | None = None) -> float:
     return total
 
 
+# Headless runs in scratch folders (benchmarks, scripts) are not your work: leave them out of before/after.
+SCRATCH = ("-tmp-", "-evals-runs-", "claude-lean-evals")
+FRESH_MAX = 100_000   # a fresh session's first request is fixed overhead (~17-60K tokens); more means it was resumed
+
+
+def install_time():
+    """When Claude Lean was first installed here: its oldest settings backup (install.sh writes one each run)."""
+    baks = sorted(Path.home().glob(".claude/settings.json.lean-*.bak"))
+    if not baks:
+        return None
+    stamp = baks[0].name.split("lean-")[1].split(".bak")[0]                   # 20261120-020654
+    return dt.datetime.strptime(stamp, "%Y%m%d-%H%M%S").astimezone(dt.timezone.utc)
+
+
+def compare(cut, days, project):
+    """Sessions before vs after `cut`. The first request of a session is pure fixed overhead (system prompt, tools,
+    skills, memory) before any task work, so its size is the clean before/after signal. Per-session and per-request
+    cost follow your workload too, so read them as context, not proof."""
+    rows = collect(days + max((dt.datetime.now(dt.timezone.utc) - cut).days, 0) + 1, project)
+    first, sess, side = {}, collections.defaultdict(float), {}
+    for proj, sid, who, ts, model, u in rows:
+        if who != "main" or any(x in proj for x in SCRATCH):
+            continue
+        t = dt.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if abs((t - cut).days) > days:
+            continue
+        prompt = u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0) + u.get("cache_creation_input_tokens", 0)
+        if sid not in first or ts < first[sid][0]:
+            first[sid] = (ts, prompt)
+            side[sid] = "after" if t >= cut else "before"
+        sess[sid] += cost(model, u)
+    resumed = {i for i in first if first[i][1] > FRESH_MAX}      # opened with old history: not a fixed-overhead reading
+    side = {i: k for i, k in side.items() if i not in resumed}
+    req = collections.Counter(side[r[1]] for r in rows if r[2] == "main" and r[1] in side)
+    stats = {}
+    for k in ("before", "after"):
+        ids = [i for i in side if side[i] == k]
+        if not ids:
+            continue
+        firsts = sorted(first[i][1] for i in ids)
+        stats[k] = {"sessions": len(ids), "first": firsts[len(firsts) // 2],
+                    "per_session": sum(sess[i] for i in ids) / len(ids),
+                    "per_request": sum(sess[i] for i in ids) / max(req[k], 1)}
+    if len(stats) < 2:
+        for k, v in stats.items():
+            print(f"{k}: {v['sessions']} fresh sessions, first request {v['first']:,} tokens (median), "
+                  f"${v['per_request']:.4f} per request")
+        sys.exit(f"need fresh sessions on both sides of {cut:%Y-%m-%d %H:%M} UTC within {days} days "
+                 f"(have: {', '.join(stats) or 'none'}). Use Claude Code for a while, then run this again.")
+    b, a = stats["before"], stats["after"]
+
+    def ch(x, y):
+        return f"{100 * (y / x - 1):+.0f}%" if x else ""
+    print(f"Claude Lean before/after {cut:%Y-%m-%d %H:%M} UTC, {days} days each side"
+          f"{' (' + project + ')' if project else ''}\n")
+    print(f"{'':<34} {'before':>12} {'after':>12} {'change':>8}")
+    print(f"{'fresh sessions':<34} {b['sessions']:>12} {a['sessions']:>12}"
+          f"   ({len(resumed)} resumed sessions left out)")
+    print(f"{'first request, tokens (median)':<34} {b['first']:>12,} {a['first']:>12,} {ch(b['first'], a['first']):>8}")
+    print(f"{'cost per request':<34} {'$%.4f' % b['per_request']:>12} {'$%.4f' % a['per_request']:>12} "
+          f"{ch(b['per_request'], a['per_request']):>8}")
+    print(f"{'cost per session':<34} {'$%.3f' % b['per_session']:>12} {'$%.3f' % a['per_session']:>12} "
+          f"{ch(b['per_session'], a['per_session']):>8}")
+    print("\nThe first request is fixed overhead only, so its change is what Claude Lean did. Cost per request and per "
+          "session also move with what you worked on: compare similar weeks, and give it a few days of normal use.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=7)
     ap.add_argument("--project")
     ap.add_argument("--today-usd", action="store_true")
+    ap.add_argument("--compare", nargs="?", const="install", metavar="DATE",
+                    help="before vs after DATE (YYYY-MM-DD[THH:MM]); default: when Claude Lean was installed")
     a = ap.parse_args()
     if a.today_usd:
         print(f"{today_usd(a.project):.2f}")
         return
+    if a.compare:
+        cut = install_time() if a.compare == "install" else dt.datetime.fromisoformat(a.compare).astimezone(dt.timezone.utc)
+        if cut is None:
+            sys.exit("no Claude Lean install found; pass a date: --compare 2026-11-20")
+        return compare(cut, a.days, a.project)
     rows = collect(a.days, a.project)
     if not rows:
         sys.exit("no usage found")

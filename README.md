@@ -4,7 +4,7 @@
 
 ### Spend less on Claude Code. Keep the quality.
 
-Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. On short tasks that load is most of the bill. Claude Lean cuts it, so short tasks cost **32% less** by default and **74% less** with `claude-lean lite`, with the same tasks passing.
+Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. **`claude-lean lite` cost 44-61% less than plain Claude Code** across short tasks, long sessions and noisy builds, with every task passing, ahead of RTK and caveman on the same tests.
 
 One command. Runs locally. Open source, no account, no telemetry.
 
@@ -23,13 +23,18 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 ## Results
 
-| Short task, Haiku 5.5 | Plain Claude Code | With Claude Lean | Saved | Tasks passed |
-|---|--:|--:|--:|:-:|
-| Slim (on by default after `init`) | $0.0078 | **$0.0053** | **32%** | 15/15 both |
-| `claude-lean lite` | $0.0081 | **$0.0021** | **74%** | 15/15 both |
-| Tokens sent before you type (clean install) | 17,243 | **5,442** with `lite` | **68%** | |
+Same graded tasks, same machine, Haiku 5.5, 170 tasks, every arm passed every task (2026-11-20, `evals/compare.py`):
 
-Cost per task; a script grades every answer. [Full benchmark](#benchmark).
+| Cost vs plain Claude Code | Short task | Long session (10 tasks) | Noisy build/test output |
+|---|--:|--:|--:|
+| **`claude-lean lite`** | **-48%** | **-44%** | **-61%** |
+| Claude Lean `init` (slim + output filter) | -2% | -9% | -24% |
+| [caveman](https://github.com/JuliusBrussee/caveman) v4.1.0 | +7% | -21% | -4% |
+| [RTK](https://github.com/rtk-ai/rtk) v1.2.1 | -1% | -14% | -14% |
+
+Two runs per cell; differences under ~10% are within run-to-run noise. Each tool was installed the way its README says (RTK with its Claude Code hook and permission rules for the commands it rewrites, caveman as a plugin), on a clean Claude Code setup.
+
+**How much slim saves depends on your setup.** It removes feature definitions from every request, so it saves more the more you load: -32% on short tasks on a setup with many skills and plugins (49.5K tokens per request), about 0 on the clean setup above. `claude-lean memory` and `claude-lean audit` show what yours loads.
 
 > **Correction (0.2.3):** earlier versions said long sessions cost 65% less with a fresh session per task. That number came from a bug in our eval: a resumed Claude Code session reports its cost as a running total, and we added those totals up. Measured per step, one continuous session is *cheaper* when tasks run back to back (cached history is billed at a tenth of the input price). Details in [What we got wrong](#what-we-got-wrong).
 
@@ -100,6 +105,8 @@ Claude Lean shrinks the parts that don't need to be there:
 - **Cache guard.** Warns you before a mid-session edit to CLAUDE.md or settings, which forces the whole prompt cache to be rebuilt.
 - **Clean uninstall.** `npx claude-lean uninstall` removes exactly what it added, cache included.
 
+**Does it work on your machine?** `report --compare` reads your own logs and compares fresh sessions before and after the install. The first request of a fresh session is pure fixed overhead (system prompt, tools, skills), so its change is exactly what Claude Lean removed; cost per request and per session also move with what you worked on. Resumed sessions and scratch runs are left out. Give it a few days of normal use.
+
 ### Agents in CI
 
 Running Claude Code in GitHub Actions? Add Claude Lean before the step that starts it:
@@ -119,15 +126,26 @@ It writes the same settings as `npx claude-lean init` into the runner's `~/.clau
 
 ```bash
 npx claude-lean report --days 7       # where your money went: by model, project and session, with fixes
+npx claude-lean report --compare      # your own fresh sessions, before vs after you installed Claude Lean
 npx claude-lean stats                 # what the output filter saved, per tool
 LEAN_DAY_USD=10 npx claude-lean init  # daily spending cap: warns at 80%, stops at 100%
 ```
 
 ## Benchmark
 
-Short tasks: 5 quick jobs (fix a bug, add a function, find a definition, count log lines, look up code), 3 runs each, Haiku 5.5. Each setup is compared with plain Claude Code in the same batch, and a script grades every answer.
+The comparison above, in dollars (Haiku 5.5, clean setup):
 
-| Short task | Passed | Plain | With Claude Lean |
+| | Short task | Long session | Noisy task | Passed |
+|---|--:|--:|--:|:-:|
+| Plain Claude Code | $0.0031 | $0.0326 | $0.0041 | 34/34 |
+| `claude-lean lite` | $0.0016 | $0.0183 | $0.0016 | 34/34 |
+| Claude Lean `init` | $0.0030 | $0.0296 | $0.0031 | 34/34 |
+| caveman | $0.0033 | $0.0257 | $0.0039 | 34/34 |
+| RTK | $0.0030 | $0.0279 | $0.0035 | 34/34 |
+
+On a heavier setup (the author's: many skills and plugins, 49.5K tokens per request), 5 short tasks x 3 runs each:
+
+| Short task, heavy setup | Passed | Plain | With Claude Lean |
 |---|:-:|--:|--:|
 | Slim (on by default) | 15/15 both | $0.0078 | **$0.0053 (-32%)** |
 | `claude-lean lite` | 15/15 both | $0.0081 | **$0.0021 (-74%)** |

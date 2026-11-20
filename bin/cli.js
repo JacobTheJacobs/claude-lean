@@ -25,6 +25,7 @@ const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions
                                                           install hooks into ~/.claude (backup first, re-runnable)
   claude-lean uninstall [--reader]                        remove everything it added
   claude-lean report [--days N] [--project NAME]          where your tokens and dollars went
+  claude-lean report --compare [DATE]                     your own sessions before vs after installing
   claude-lean stats                                       what the output filter saved
   claude-lean get <id>                                    full original of a trimmed output
   claude-lean memory                                      what your memory and CLAUDE.md cost per request
