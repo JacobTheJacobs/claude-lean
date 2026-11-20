@@ -4,7 +4,7 @@
 
 ### Spend less on Claude Code. Keep the quality.
 
-Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. **`claude-lean lite` cost 44-61% less than plain Claude Code** across short tasks, long sessions and noisy builds, with every task passing, ahead of RTK and caveman on the same tests.
+Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. Measured against plain Claude Code with every task passing: **`claude-lean lite` costs 32-70% less**, and the default install costs 36% less on short tasks and 44% less on noisy builds. On a real setup, the first request of a fresh session drops by about a third.
 
 One command. Runs locally. Open source, no account, no telemetry.
 
@@ -23,18 +23,26 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 ## Results
 
-Same graded tasks, same machine, Haiku 5.5, 170 tasks, every arm passed every task (2026-11-20, `evals/compare.py`):
+Same graded tasks, Haiku 5.5, clean Claude Code setup, every arm passed every task (2026-11-20, `evals/compare.py`):
 
 | Cost vs plain Claude Code | Short task | Long session (10 tasks) | Noisy build/test output |
 |---|--:|--:|--:|
+| **`claude-lean lite`** | **-70%** | **-32%** | **-64%** |
+| **Claude Lean `init`** (slim + output filter) | **-36%** | +12% | **-44%** |
+
+Two runs per cell; differences under ~10% are run-to-run noise, so read the long-session `init` result as "no saving".
+
+**On a real setup** (the author's machine: many skills and plugins, a project with memory), the first request of a fresh session went from 46,018 to 29,179 tokens (-37%), and its cost on a warm cache from $0.0031 to $0.0004: without slim, part of the prompt start changes on every run and misses the cache. Check yours with `claude-lean report --compare`.
+
+**vs RTK and caveman**, same tasks, on a base where every arm already had slim on (an eval setup leak we found and fixed afterwards; it applies equally to all four arms):
+
+| Cost vs plain Claude Code + slim | Short task | Long session | Noisy output |
+|---|--:|--:|--:|
 | **`claude-lean lite`** | **-48%** | **-44%** | **-61%** |
-| Claude Lean `init` (slim + output filter) | -2% | -9% | -24% |
 | [caveman](https://github.com/JuliusBrussee/caveman) v4.1.0 | +7% | -21% | -4% |
 | [RTK](https://github.com/rtk-ai/rtk) v1.2.1 | -1% | -14% | -14% |
 
-Two runs per cell; differences under ~10% are within run-to-run noise. Each tool was installed the way its README says (RTK with its Claude Code hook and permission rules for the commands it rewrites, caveman as a plugin), on a clean Claude Code setup.
-
-**How much slim saves depends on your setup.** It removes feature definitions from every request, so it saves more the more you load: -32% on short tasks on a setup with many skills and plugins (49.5K tokens per request), about 0 on the clean setup above. `claude-lean memory` and `claude-lean audit` show what yours loads.
+Each tool was installed the way its README says (RTK with its Claude Code hook and permission rules for the commands it rewrites, caveman as a plugin).
 
 > **Correction (0.2.3):** earlier versions said long sessions cost 65% less with a fresh session per task. That number came from a bug in our eval: a resumed Claude Code session reports its cost as a running total, and we added those totals up. Measured per step, one continuous session is *cheaper* when tasks run back to back (cached history is billed at a tenth of the input price). Details in [What we got wrong](#what-we-got-wrong).
 
@@ -133,15 +141,13 @@ LEAN_DAY_USD=10 npx claude-lean init  # daily spending cap: warns at 80%, stops 
 
 ## Benchmark
 
-The comparison above, in dollars (Haiku 5.5, clean setup):
+The clean comparison above, in dollars:
 
 | | Short task | Long session | Noisy task | Passed |
 |---|--:|--:|--:|:-:|
-| Plain Claude Code | $0.0031 | $0.0326 | $0.0041 | 34/34 |
-| `claude-lean lite` | $0.0016 | $0.0183 | $0.0016 | 34/34 |
-| Claude Lean `init` | $0.0030 | $0.0296 | $0.0031 | 34/34 |
-| caveman | $0.0033 | $0.0257 | $0.0039 | 34/34 |
-| RTK | $0.0030 | $0.0279 | $0.0035 | 34/34 |
+| Plain Claude Code | $0.0038 | $0.0248 | $0.0042 | 34/34 |
+| Claude Lean `init` | $0.0024 | $0.0277 | $0.0024 | 34/34 |
+| `claude-lean lite` | $0.0011 | $0.0169 | $0.0015 | 34/34 |
 
 On a heavier setup (the author's: many skills and plugins, 49.5K tokens per request), 5 short tasks x 3 runs each:
 
