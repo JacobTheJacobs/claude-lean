@@ -9,11 +9,10 @@ Every Claude Code request re-sends your whole session: the history, every tool d
 One command. Runs locally. Open source, no account, no telemetry.
 
 [![npm](https://img.shields.io/npm/v/claude-lean?color=cb3837&logo=npm)](https://www.npmjs.com/package/claude-lean)
-[![CI](https://github.com/JacobTheJacobs/claude-lean/actions/workflows/ci.yml/badge.svg)](https://github.com/JacobTheJacobs/claude-lean/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/JacobTheJacobs/claude-lean/blob/master/LICENSE)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](#security--privacy)
 [![Runs locally](https://img.shields.io/badge/runs-100%25%20local-success)](#security--privacy)
-[![GitHub stars](https://img.shields.io/github/stars/JacobTheJacobs/claude-lean?style=flat&color=yellow)](https://github.com/JacobTheJacobs/claude-lean)
+[![GitHub stars](https://img.shields.io/github/stars/JacobTheJacobs/claude-lean?style=flat&color=yellow&label=stars)](https://github.com/JacobTheJacobs/claude-lean)
 
 **[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[CI](#agents-in-ci)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md)**
 
@@ -226,5 +225,7 @@ Sources: Anthropic's [cost guide](https://platform.claude.com/docs/en/about-clau
 Filters for more commands help the most. See [CONTRIBUTING.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/CONTRIBUTING.md); `npm test` runs every test. Report bugs or request a filter in [issues](https://github.com/JacobTheJacobs/claude-lean/issues).
 
 ## License
+
+Built by [JacobTheJacobs](https://github.com/JacobTheJacobs) with [Claude Code](https://claude.com/claude-code).
 
 MIT. Release notes are in [CHANGELOG.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md).
