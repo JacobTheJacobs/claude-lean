@@ -12,7 +12,6 @@ One command. Runs locally. Open source, no account, no telemetry.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/JacobTheJacobs/claude-lean/blob/master/LICENSE)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](#security--privacy)
 [![Runs locally](https://img.shields.io/badge/runs-100%25%20local-success)](#security--privacy)
-[![GitHub stars](https://img.shields.io/github/stars/JacobTheJacobs/claude-lean?style=flat&color=yellow&label=stars)](https://github.com/JacobTheJacobs/claude-lean)
 
 **[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[CI](#agents-in-ci)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md)**
 
