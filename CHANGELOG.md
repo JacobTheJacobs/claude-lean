@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2] - 2026-11-20
+
+### Added
+- GitHub Action (`action.yml`): `uses: JacobTheJacobs/claude-lean@v0.2.2` installs Claude Lean on a CI runner before
+  Claude Code starts. Inputs `filter` and `slim` (both on by default).
+
+### Changed
+- README rewritten: one results table for long and short sessions, CI section, vs JFrog Boost with every batch.
+- The release workflow skips the npm step when the `NPM_TOKEN` secret is missing.
+
 ## [0.2.1] - 2026-11-20
 
 ### Fixed

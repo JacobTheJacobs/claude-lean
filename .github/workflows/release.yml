@@ -1,5 +1,5 @@
 # Push a tag like v0.2.0 (matching package.json) to test, publish to npm with provenance, and cut a GitHub release.
-# Needs the repo secret NPM_TOKEN (an npm automation token).
+# With the repo secret NPM_TOKEN it also publishes to npm; without it, that step is skipped.
 name: Release
 on:
   push:
@@ -22,7 +22,9 @@ jobs:
       - name: Tag matches package.json
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
       - run: npm test
-      - run: npm publish --provenance --access public
+      - name: Publish to npm (skipped without the NPM_TOKEN secret; publish by hand with `npm publish`)
+        if: ${{ env.NODE_AUTH_TOKEN != '' }}
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: GitHub release

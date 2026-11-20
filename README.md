@@ -15,7 +15,7 @@ One command. Runs locally. Open source, no account, no telemetry.
 [![Runs locally](https://img.shields.io/badge/runs-100%25%20local-success)](#security--privacy)
 [![GitHub stars](https://img.shields.io/github/stars/JacobTheJacobs/claude-lean?style=flat&color=yellow)](https://github.com/JacobTheJacobs/claude-lean)
 
-**[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](CHANGELOG.md)**
+**[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[CI](#agents-in-ci)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](CHANGELOG.md)**
 
 <img src="docs/demo.gif" alt="Terminal demo: npx claude-lean init installs the hooks; a 417-line pytest run is trimmed to 13 lines with the failure kept; the long-session guard suggests /clear; claude-lean lite sends 5,442 tokens instead of 17,243; a 10-task Opus session costs $1.74 instead of $4.97." width="820">
 
@@ -100,6 +100,21 @@ Claude Lean shrinks each part:
 - **Never in the way.** A failing hook exits quietly instead of breaking your session. The filter never approves a command, so your permission rules still apply.
 - **Cache guard.** Warns you before a mid-session edit to CLAUDE.md or settings, which forces the whole prompt cache to be rebuilt.
 - **Clean uninstall.** `npx claude-lean uninstall` removes exactly what it added, cache included.
+
+### Agents in CI
+
+Running Claude Code in GitHub Actions? Add Claude Lean before the step that starts it:
+
+```yaml
+- uses: JacobTheJacobs/claude-lean@v0.2.2
+  # with:
+  #   filter: "false"   # keep raw command output
+  #   slim: "false"     # keep every Claude Code feature
+- uses: anthropics/claude-code-action@v1
+  # ...
+```
+
+It writes the same settings as `npx claude-lean init` into the runner's `~/.claude`, so slim and the output filter apply to every Claude Code run in that job.
 
 ### See the impact
 
