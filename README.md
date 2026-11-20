@@ -86,7 +86,7 @@ Claude Lean shrinks the parts that don't need to be there:
 ### Save tokens
 
 - **Long-session guard.** Once a session passes 100K tokens (`LEAN_CLEAR_AT`), you get one line suggesting `/clear` before unrelated work. It's shown to you, never sent to the model, and stays silent on short sessions. It's about focus, not cost: back-to-back work is cheaper in one session.
-- **Handoff.** Say "handoff" before `/clear`. Claude saves a short note (goal, progress, next steps), and the next session in that folder starts with it. Used once; expires after 12 hours.
+- **Handoff.** Say "handoff" before `/clear`. Claude saves a short note (goal, progress, next steps), and the next session in that folder starts with it. Used once; expires after 12 hours. It's for continuity, not cost: writing the note is an extra request.
 - **Slim.** On by default. Turns off Artifacts, Workflows, git instructions, background tasks, cron and the advisor tool, which cuts a typical setup from 49.5K to 24.9K tokens per request. Skip it with `--no-slim`.
 - **Lite.** `npx claude-lean lite` starts Claude Code with just Read, Edit, Write, Bash, Grep, Glob, Agent and TodoWrite: no MCP servers, no skills. On a clean install that's 5.4K tokens before you type instead of 17.2K. `--keep-mcp` and `--keep-skills` bring those back.
 - **Output filter.** For pytest, jest, npm, pip, cargo, go, docker, make and more. Drops progress bars, download chatter, passing tests and repeated lines; keeps errors, tracebacks and summaries. Dev servers and watchers are never touched.
@@ -132,7 +132,7 @@ Short tasks: 5 quick jobs (fix a bug, add a function, find a definition, count l
 | Slim (on by default) | 15/15 both | $0.0078 | **$0.0053 (-32%)** |
 | `claude-lean lite` | 15/15 both | $0.0081 | **$0.0021 (-74%)** |
 
-The output filter, honestly: it cuts a 400-test pytest run or a 350-line `make` log by over 90%, but on a single task that's only 1-4% of the bill, because each request also carries the fixed overhead.
+The output filter, honestly: it cuts a 400-test pytest run or a 350-line `make` log by over 90%, but on a single task that's only 1-4% of the bill, and in our long-session test it never fired, because Claude already pipes test output through `grep` or `tail` on its own.
 
 Raw results: [`evals/short-results.jsonl`](https://github.com/JacobTheJacobs/claude-lean/blob/master/evals/short-results.jsonl). To measure long sessions yourself:
 
@@ -173,13 +173,16 @@ We measured these on a 10-task session (2 sessions each) so you don't have to:
 |---|--:|:-:|
 | A fresh session per task (`/clear` between tasks), Haiku 5.5 | +109% ($0.028 → $0.058) | 20/20 both |
 | A fresh session per task, Opus 5.5 | +126% ($0.77 → $1.74) | 20/20 both |
+| Fresh session per step on 6 follow-up tasks that build on each other (`evals/chain.py`) | +60% ($0.017 → $0.028) | 18/18 all |
+| Same, plus a handoff note before each fresh session | +129% ($0.017 → $0.039) | 18/18 all |
+| Output filter over 10 fix-and-rerun steps in one session (`evals/pileup.py`) | no effect: never fired | 20/20 both |
 | Compact early (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=100000`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50`) | +32% | 20/20 |
 | Opus 5.5 advisor on Sonnet 5.5 (`--advisor claude-opus-5-5`) | +24% | 20/20 both |
 | Sonnet 5.5 instead of Haiku 5.5 | 14x the cost | 19/20 vs 20/20 |
 | Opus 5.5 with subagents on Haiku (`CLAUDE_CODE_SUBAGENT_MODEL`) | -2%, noise | 20/20 both |
 | Opus 5.5 at `--effort low` instead of medium | -6.5% | 20/20 both |
 
-Long, hard work may behave differently. Measure your own with `python3 evals/levers.py`.
+Why the filter never fired: left to itself, Claude already trims test output (`pytest -v 2>&1 | grep FAILED`, `| tail -n 80`), and the filter leaves piped commands alone. Both sessions were effectively the same setup, so their 9% cost gap shows the run-to-run noise in these evals: treat differences under ~10% as noise. Long, hard work may behave differently. Measure your own with `python3 evals/levers.py`.
 
 ## Habits that save the most
 
