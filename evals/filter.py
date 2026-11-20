@@ -12,7 +12,7 @@ import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from run import CLAUDE, HERE, TOOLS, reader_json
+from run import CLAUDE, HERE, ISOLATE, TOOLS, reader_json, RUNS
 from long import SQUEEZE
 
 PROMPT = ("Run the test suite with `pytest -v`. Exactly one test fails. Write its node id "
@@ -34,10 +34,10 @@ def build(d):
 
 
 def one(arm, rep, model):
-    d = HERE / "runs" / f"filter-{arm}-{rep}"
+    d = RUNS / f"filter-{arm}-{rep}"
     build(d)
     cmd = [CLAUDE, "-p", PROMPT, "--output-format", "json", "--no-session-persistence", "--model", model,
-           "--allowedTools", TOOLS + ",Bash(pytest *)", "--max-budget-usd", "2", "--agents", reader_json()]
+           "--allowedTools", TOOLS + ",Bash(pytest *)", "--max-budget-usd", "2", "--agents", reader_json(), *ISOLATE]
     if arm == "filter":
         cmd += ["--settings", SQUEEZE]
     t0 = time.time()

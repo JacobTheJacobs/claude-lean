@@ -13,6 +13,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -22,6 +23,18 @@ ROOT = HERE.parent
 CLAUDE = os.environ.get("CLAUDE_BIN") or sorted(glob.glob(os.path.expanduser("~/.vscode/extensions/anthropic.claude-code-*/resources/native-binary/claude")))[-1]
 EXT = os.environ.get("LEAN_EXT", str(HERE / "ext"))
 PLUGINS = {"ponytail": f"{EXT}/pt", "caveman": f"{EXT}/cv", "context-mode": f"{EXT}/cmnpm/package"}
+def step_usd(r, resumed, prev_total):
+    """Cost of one `claude -p` call. For a resumed session (--resume) Claude Code reports `total_cost_usd` as a running
+    total for the whole session, so the step's own cost is the difference. Returns (step cost, new running total)."""
+    total = r.get("total_cost_usd") or 0
+    return (max(total - prev_total, 0.0) if resumed else total), total
+
+
+# Run folders live outside the repo: an agent exploring a run folder must not find (and edit) the repo or its fixture.
+RUNS = Path(os.environ.get("LEAN_RUNS") or Path(tempfile.gettempdir()) / "claude-lean-evals")
+# Evals must not inherit the machine's own ~/.claude/settings.json (installed hooks, env switches): every arm starts
+# from the same clean settings and adds only what it tests.
+ISOLATE = ["--setting-sources", "project,local"]
 TOOLS = "Read,Edit,Write,Grep,Glob,Bash(python3 *),Bash(grep *),Bash(wc *),Bash(ls *),Agent,Task,mcp__plugin_context-mode_context-mode"
 
 
@@ -34,7 +47,7 @@ def reader_json():
 
 
 def one(arm, task, rep, model):
-    d = HERE / "runs" / f"{arm}-{task['id']}-{rep}"
+    d = RUNS / f"{arm}-{task['id']}-{rep}"
     shutil.rmtree(d, ignore_errors=True)
     shutil.copytree(HERE / "fixture", d)
     cmd = [CLAUDE, "-p", task["prompt"], "--output-format", "json", "--no-session-persistence",

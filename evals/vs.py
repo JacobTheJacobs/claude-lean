@@ -31,7 +31,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from run import CLAUDE, HERE, TOOLS, reader_json
+from run import CLAUDE, HERE, ISOLATE, TOOLS, reader_json, step_usd, RUNS
 from filter import build as build_tests, BAD as BAD_TEST
 
 LEAN_HOOK = {"matcher": "Bash", "hooks": [{"type": "command",
@@ -75,7 +75,7 @@ def jfrog_settings(home, binary):
 
 def flags(arm, jf, extra_allow=""):
     allow = TOOLS + (f",{extra_allow}" if extra_allow else "")
-    hooks, out = {}, ["--allowedTools", allow]
+    hooks, out = {}, ["--allowedTools", allow, *ISOLATE]
     if "jfrog" in arm:
         jh, rule = jf
         for ev, groups in json.loads(jh)["hooks"].items():
@@ -104,10 +104,10 @@ def call(cmd, cwd):
 
 
 def long_session(arm, rep, a, jf):
-    d = HERE / "runs" / f"vs-long-{arm}-{rep}"
+    d = RUNS / f"vs-long-{arm}-{rep}"
     shutil.rmtree(d, ignore_errors=True)
     shutil.copytree(HERE / "fixture", d)
-    sid, rows, spent = None, [], 0.0
+    sid, rows, spent, total = None, [], 0.0, 0.0
     for step, task in enumerate(json.loads((HERE / "tasks.json").read_text())):
         left = a.budget - spent
         row = {"suite": "long", "arm": arm, "rep": rep, "step": step, "task": task["id"]}
@@ -117,6 +117,7 @@ def long_session(arm, rep, a, jf):
         cmd = [CLAUDE, "-p", task["prompt"], "--output-format", "json", "--model", a.model,
                "--max-budget-usd", f"{left:.2f}", *flags(arm, jf)]
         fresh = arm.startswith("lean")
+        resumed = not fresh and bool(sid)
         if fresh:
             if not os.environ.get("LEAN_KEEP_SESSIONS"):           # set it to keep transcripts for a post-mortem
                 cmd += ["--no-session-persistence"]
@@ -124,6 +125,7 @@ def long_session(arm, rep, a, jf):
             cmd += ["--resume", sid]
         r, m = call(cmd, d)
         sid = r.get("session_id") or sid
+        m["usd"], total = step_usd(r, resumed, total)
         spent += m["usd"]
         ok = json.loads(subprocess.run([sys.executable, str(HERE / "check.py"), task["id"], str(d)],
                                        capture_output=True, text=True).stdout)["pass"]
@@ -136,7 +138,7 @@ def long_session(arm, rep, a, jf):
 
 
 def noisy_task(arm, rep, a, jf, task):
-    d = HERE / "runs" / f"vs-{task['id']}-{arm}-{rep}"
+    d = RUNS / f"vs-{task['id']}-{arm}-{rep}"
     task["build"](d)
     cmd = [CLAUDE, "-p", task["prompt"], "--output-format", "json", "--model", a.model, "--no-session-persistence",
            "--max-budget-usd", f"{a.budget:.2f}", *flags(arm, jf, task["allow"])]

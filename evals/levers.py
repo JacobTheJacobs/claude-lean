@@ -23,7 +23,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from run import CLAUDE, HERE, TOOLS
+from run import CLAUDE, HERE, ISOLATE, TOOLS, step_usd, RUNS
 
 SLIM = {k: "1" for k in ("CLAUDE_CODE_DISABLE_ARTIFACT", "CLAUDE_CODE_DISABLE_WORKFLOWS",
                          "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
@@ -43,10 +43,10 @@ ARMS = {
 
 def session(arm, rep, budget):
     model, fresh, extra, env = ARMS[arm]
-    d = HERE / "runs" / f"levers-{arm}-{rep}"
+    d = RUNS / f"levers-{arm}-{rep}"
     shutil.rmtree(d, ignore_errors=True)
     shutil.copytree(HERE / "fixture", d)
-    sid, rows, spent = None, [], 0.0
+    sid, rows, spent, total = None, [], 0.0, 0.0
     for step, task in enumerate(json.loads((HERE / "tasks.json").read_text())):
         row = {"arm": arm, "rep": rep, "step": step, "task": task["id"]}
         left = budget - spent
@@ -54,10 +54,11 @@ def session(arm, rep, budget):
             rows.append({**row, "pass": False, "usd": 0, "error": "budget"})
             continue
         cmd = [CLAUDE, "-p", task["prompt"], "--output-format", "json", "--model", model, "--allowedTools", TOOLS,
-               "--max-budget-usd", f"{left:.2f}", *extra]
+               "--max-budget-usd", f"{left:.2f}", *ISOLATE, *extra]
+        resumed = not fresh and bool(sid)
         if fresh:
             cmd += ["--no-session-persistence"]
-        elif sid:
+        elif resumed:
             cmd += ["--resume", sid]
         t0 = time.time()
         p = subprocess.run(cmd, cwd=d, capture_output=True, text=True, timeout=900, env={**os.environ, **SLIM, **env})
@@ -66,7 +67,7 @@ def session(arm, rep, budget):
         except (ValueError, IndexError):
             r = {"is_error": True, "stderr": p.stderr[-300:]}
         sid = r.get("session_id") or sid
-        usd = r.get("total_cost_usd") or 0
+        usd, total = step_usd(r, resumed, total)
         spent += usd
         ok = json.loads(subprocess.run([sys.executable, str(HERE / "check.py"), task["id"], str(d)],
                                        capture_output=True, text=True).stdout)["pass"]

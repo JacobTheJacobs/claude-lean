@@ -1,7 +1,7 @@
 {
   "name": "claude-lean",
-  "version": "0.2.2",
-  "description": "Cut Claude Code costs ~65% on long sessions. Local hooks: long-session guard, output filter, cache guard, daily cap, usage report. Open source, no telemetry.",
+  "version": "0.2.3",
+  "description": "Cut the fixed token overhead Claude Code sends with every request: short tasks 32-74% cheaper, same pass rate. Local hooks: output filter, long-session guard, cache guard, daily cap, usage report. Open source, no telemetry.",
   "bin": {
     "claude-lean": "bin/cli.js"
   },

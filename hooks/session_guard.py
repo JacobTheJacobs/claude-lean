@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Long-session guard (UserPromptSubmit hook): tells you when the session has grown long enough that starting fresh
-for the next task saves money. Silent below the threshold, so short sessions pay nothing.
+"""Long-session guard (UserPromptSubmit hook): tells you when the session has grown long, so you can /clear before
+starting something unrelated. Silent below the threshold, so short sessions pay nothing.
 
-Each request re-reads the whole session. Measured (evals/long.py): 10 tasks in one session $4.97, a fresh session per
-task $1.74, same 20/20 quality. This hook reads the last request's prompt size from the transcript and, past
+It does not promise savings. Measured (evals/long.py, per-step costs): when tasks run back to back, one continuous
+session is cheaper than a fresh one per task, because the history is read from cache at a tenth of the input price
+while a fresh session pays to write its whole starting context again. /clear is for focus and for unrelated work.
+This hook reads the last request's prompt size from the transcript and, past
 LEAN_CLEAR_AT tokens (default 100000), shows a one-line note to you (systemMessage: not sent to the model, adds no
 tokens). It repeats at most once per LEAN_CLEAR_EVERY tokens of further growth (default 50000). Never blocks."""
 import json
@@ -49,9 +51,9 @@ def main():
         return
     mark.parent.mkdir(parents=True, exist_ok=True)
     mark.write_text(str(n))
-    print(json.dumps({"systemMessage": f"Claude Lean: this session is ~{n // 1000}K tokens and every request re-reads it. "
-                      "New task? /clear first (measured: 65% cheaper per 10 tasks, same quality). "
-                      "Same task? Say \"handoff\", then /clear: a short note carries over. Or /compact."}))
+    print(json.dumps({"systemMessage": f"Claude Lean: this session is ~{n // 1000}K tokens. "
+                      "Starting something unrelated? /clear keeps the context focused. "
+                      "Same task, but the context is getting messy? Say \"handoff\", then /clear: a short note carries over."}))
 
 
 if __name__ == "__main__":

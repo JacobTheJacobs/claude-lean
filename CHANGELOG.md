@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.3] - 2026-11-20
+
+### Fixed: the long-session claim was wrong
+- Earlier versions said long sessions cost 65% less with a fresh session per task ($4.97 -> $1.74 on Opus 5.5). The
+  evals resumed one Claude Code session for the plain side, and a resumed session reports `total_cost_usd` as a running
+  total for the whole session. We added those running totals, so earlier steps were counted again at every step.
+- Measured per step, one continuous session is cheaper when tasks run back to back: Haiku 5.5 $0.028 vs $0.058 for a
+  fresh session per task (+109%), Opus 5.5 $0.77 vs $1.74 (+126%). Cached history is billed at a tenth of the input
+  price; each new session pays to write its starting context again.
+- All eval scripts now count each step's own cost (`evals/run.py` `step_usd`). Saved results keep the original figure as
+  `usd_reported`. Short-task results (-32% slim, -74% `lite`) were single fresh calls and are unaffected.
+- The long-session guard no longer promises savings; it suggests `/clear` for focus before unrelated work.
+- README, demo GIF and package description lead with the short-task results. The 65% images are gone.
+- Evals run with `--setting-sources project,local`, so the machine's own installed hooks can't leak into any arm.
+- New evals: `evals/chain.py` (dependent follow-up tasks, with and without handoff) and `evals/pileup.py` (output
+  filter over a long fix-and-rerun session).
+
 ## [0.2.2] - 2026-11-20
 
 ### Added

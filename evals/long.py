@@ -16,7 +16,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from run import CLAUDE, HERE, TOOLS, reader_json
+from run import CLAUDE, HERE, ISOLATE, TOOLS, reader_json, step_usd, RUNS
 
 
 SQUEEZE = json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
@@ -24,10 +24,10 @@ SQUEEZE = json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
 
 
 def session(arm, rep, model, budget):
-    d = HERE / "runs" / f"long-{arm}-{rep}"
+    d = RUNS / f"long-{arm}-{rep}"
     shutil.rmtree(d, ignore_errors=True)
     shutil.copytree(HERE / "fixture", d)
-    sid, out, spent = None, [], 0.0
+    sid, out, spent, total = None, [], 0.0, 0.0
     for step, task in enumerate(json.loads((HERE / "tasks.json").read_text())):
         left = budget - spent
         if left < 0.01:
@@ -37,8 +37,9 @@ def session(arm, rep, model, budget):
             out.append(row)
             continue
         cmd = [CLAUDE, "-p", task["prompt"], "--output-format", "json", "--allowedTools", TOOLS,
-               "--max-budget-usd", f"{left:.2f}", "--model", model]
-        if arm == "plain" and sid:
+               "--max-budget-usd", f"{left:.2f}", "--model", model, *ISOLATE]
+        resumed = arm == "plain" and bool(sid)
+        if resumed:
             cmd += ["--resume", sid]
         if arm in ("lean", "filter"):
             cmd += ["--agents", reader_json(), "--no-session-persistence"]
@@ -54,8 +55,9 @@ def session(arm, rep, model, budget):
         ok = json.loads(subprocess.run([sys.executable, str(HERE / "check.py"), task["id"], str(d)],
                                        capture_output=True, text=True).stdout)["pass"]
         u = r.get("usage") or {}
-        spent += r.get("total_cost_usd") or 0
-        row = {"arm": arm, "rep": rep, "step": step, "task": task["id"], "pass": ok, "usd": r.get("total_cost_usd"),
+        usd, total = step_usd(r, resumed, total)
+        spent += usd
+        row = {"arm": arm, "rep": rep, "step": step, "task": task["id"], "pass": ok, "usd": usd,
                "prompt": u.get("cache_read_input_tokens", 0) + u.get("cache_creation_input_tokens", 0) + u.get("input_tokens", 0),
                "seconds": round(time.time() - t0, 1), "error": r.get("is_error"), "models": r.get("modelUsage")}
         print(json.dumps({k: row[k] for k in ("arm", "rep", "step", "task", "pass", "usd", "prompt")}), flush=True)
