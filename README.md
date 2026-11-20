@@ -10,14 +10,14 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 [![npm](https://img.shields.io/npm/v/claude-lean?color=cb3837&logo=npm)](https://www.npmjs.com/package/claude-lean)
 [![CI](https://github.com/JacobTheJacobs/claude-lean/actions/workflows/ci.yml/badge.svg)](https://github.com/JacobTheJacobs/claude-lean/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/JacobTheJacobs/claude-lean/blob/master/LICENSE)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](#security--privacy)
 [![Runs locally](https://img.shields.io/badge/runs-100%25%20local-success)](#security--privacy)
 [![GitHub stars](https://img.shields.io/github/stars/JacobTheJacobs/claude-lean?style=flat&color=yellow)](https://github.com/JacobTheJacobs/claude-lean)
 
-**[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[CI](#agents-in-ci)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](CHANGELOG.md)**
+**[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[CI](#agents-in-ci)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md)**
 
-<img src="docs/demo.gif" alt="Terminal demo: npx claude-lean init installs the hooks; a 417-line pytest run is trimmed to 13 lines with the failure kept; the long-session guard suggests /clear; claude-lean lite sends 5,442 tokens instead of 17,243; a 10-task Opus session costs $1.74 instead of $4.97." width="820">
+<img src="https://raw.githubusercontent.com/JacobTheJacobs/claude-lean/master/docs/demo.gif" alt="Terminal demo: npx claude-lean init installs the hooks; a 417-line pytest run is trimmed to 13 lines with the failure kept; the long-session guard suggests /clear; claude-lean lite sends 5,442 tokens instead of 17,243; a 10-task Opus session costs $1.74 instead of $4.97." width="820">
 
 <sub>Every frame is real output from claude-lean 0.2.1.</sub>
 
@@ -33,8 +33,7 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 Cost per session (long) or per task (short). A script grades every answer. [Full benchmark](#benchmark).
 
-> [!NOTE]
-> Every number here comes from an eval in [`evals/`](evals/) that you can re-run yourself. When a result went against us, it's on this page too.
+> **Note:** every number here comes from an eval in [`evals/`](https://github.com/JacobTheJacobs/claude-lean/tree/master/evals) that you can re-run yourself. When a result went against us, it's on this page too.
 
 ## Get started
 
@@ -127,8 +126,8 @@ LEAN_DAY_USD=10 npx claude-lean init  # daily spending cap: warns at 80%, stops 
 ## Benchmark
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.svg">
-  <img src="docs/hero-light.svg" alt="Cost of one 10-task Claude Code session on Opus 5.5: plain $4.97, with Claude Lean $1.74, 65% less, 20/20 tasks passed in both." width="720">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/JacobTheJacobs/claude-lean/master/docs/hero-dark.svg">
+  <img src="https://raw.githubusercontent.com/JacobTheJacobs/claude-lean/master/docs/hero-light.svg" alt="Cost of one 10-task Claude Code session on Opus 5.5: plain $4.97, with Claude Lean $1.74, 65% less, 20/20 tasks passed in both." width="720">
 </picture>
 
 The same 10 tasks, in order, on a test repo (a Python package with 12 modules and a 20,000-line log): fix a bug, add a function, then 8 lookups and counts. A script grades every answer (`evals/check.py`). Claude Code 2.1.322, 2 sessions per setup.
@@ -220,12 +219,12 @@ Sources: Anthropic's [cost guide](https://platform.claude.com/docs/en/about-clau
 
 **Does the output filter change exit codes?** Yes. A filtered command runs through a pipe, so Claude sees exit code 0 even when tests fail. Every error and summary line is kept, so the failure still shows. To skip the filter, use `init --no-filter`.
 
-**Can subagents run on Haiku?** Yes, with a named agent file (`model: haiku`) like [`agents/reader.md`](agents/reader.md); install it with `init --reader`. `fork` subagents always use your main model.
+**Can subagents run on Haiku?** Yes, with a named agent file (`model: haiku`) like [`agents/reader.md`](https://github.com/JacobTheJacobs/claude-lean/blob/master/agents/reader.md); install it with `init --reader`. `fork` subagents always use your main model.
 
 ## Contributing
 
-Filters for more commands help the most. See [CONTRIBUTING.md](CONTRIBUTING.md); `npm test` runs every test. Report bugs or request a filter in [issues](https://github.com/JacobTheJacobs/claude-lean/issues).
+Filters for more commands help the most. See [CONTRIBUTING.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/CONTRIBUTING.md); `npm test` runs every test. Report bugs or request a filter in [issues](https://github.com/JacobTheJacobs/claude-lean/issues).
 
 ## License
 
-MIT. Release notes are in [CHANGELOG.md](CHANGELOG.md).
+MIT. Release notes are in [CHANGELOG.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md).
