@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Claude Lean installer. Wires everything into ~/.claude for you (backup first, idempotent).
-#   ./install.sh               lean skill + long-session guard + output budget + output filter + cache guard
+#   ./install.sh               lean skill + long-session guard + output budget + output filter + cache guard +
+#                              web search, read, MCP, retry-loop and compaction hooks
 #   ./install.sh --reader      also the Haiku reader agent (adds ~550 tokens per request; pays off on bulky lookups)
 #   ./install.sh --no-filter   skip the output filter (hooks/squeeze_hook.py)
 #   ./install.sh --no-terse    skip the output rules (smallest change, 1-3 line answers); keeps the no-subagent-fan-out rule
+#   ./install.sh --no-deny     let Claude read node_modules, minified files and source maps (denied by default: they
+#                              are large, generated, and almost never what Claude needs)
 #   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools and git
 #                              instructions in every request (slim drops ~24K tokens per request: short tasks -32%)
 #   ./install.sh --dry-run     show every change, write nothing
@@ -16,7 +19,7 @@ import json, os, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
-unknown = args - {"--reader", "--no-filter", "--no-slim", "--no-terse", "--dry-run", "--uninstall", "-h", "--help"}
+unknown = args - {"--reader", "--no-filter", "--no-slim", "--no-terse", "--no-deny", "--dry-run", "--uninstall", "-h", "--help"}
 if unknown or args & {"-h", "--help"}:
     print(open(here / "install.sh").read().split("set -euo")[0].replace("# ", "").strip())
     sys.exit(1 if unknown else 0)
@@ -29,7 +32,12 @@ hooks = {"UserPromptSubmit": [("", py("hooks/session_guard.py"))],
          "SessionStart": [("", py("hooks/handoff_hook.py"))],
          # output budget: a few standing rules so Claude writes less (output costs several times input)
          "PreToolUse": [("Edit|Write|MultiEdit", py("hooks/cache_guard.py")),
-                        ("WebSearch", py("hooks/web_guard.py"))]}   # web search budget: ~$0.07 per search
+                        ("WebSearch", py("hooks/web_guard.py")),    # web search budget: ~$0.07 per search
+                        ("Read", py("hooks/read_guard.py"))],       # large-file read: ask for a range first
+         "PostToolUse": [("Read", py("hooks/read_guard.py")),       # identical re-read -> one-line note
+                         ("mcp__.*", py("hooks/mcp_compact.py"))],  # MCP JSON: drop nulls/empties, minify
+         "PostToolUseFailure": [("Bash", py("hooks/loop_guard.py"))],  # same failure 3x -> change approach
+         "PreCompact": [("", py("hooks/compact_hook.py"))]}         # what the compaction summary keeps
 # --no-terse keeps only the no-subagent-fan-out rule (slim alone made Claude fan out to 9-10 subagents)
 hooks["SessionStart"].append(("startup|clear|compact", ("LEAN_TERSE=0 " if "--no-terse" in args else "") + py("hooks/terse_hook.py")))
 if "--no-filter" not in args:
@@ -38,6 +46,8 @@ if os.environ.get("LEAN_DAY_USD"):
     cap = float(os.environ["LEAN_DAY_USD"])          # baked into the hook command: hooks don't see your shell env
     hooks["UserPromptSubmit"].append(("", f"LEAN_DAY_USD={cap:g} " + py("hooks/budget.py")))
 allow = [f"Bash({py('tools/squeeze.py')} *)"] if "--no-filter" not in args else []
+DENY = ["Read(**/node_modules/**)", "Read(**/*.min.js)", "Read(**/*.min.css)", "Read(**/*.map)"]
+DENY_MARK = "CLAUDE_LEAN_DENY"            # env key recording which deny rules we added, so uninstall removes only those
 sys.path.insert(0, str(here / "tools"))
 import slim                       # SLIM switches and how they are added/removed (also /lean:slim in the plugin)
 copies = [(here / "skills/lean/SKILL.md", cdir / "skills/lean/SKILL.md"),
@@ -65,13 +75,20 @@ for ev, groups in list(s.get("hooks", {}).items()):
 if "hooks" in s and not s["hooks"]:
     del s["hooks"]
 slim.strip(s)
+ours = (s.get("env", {}).pop(DENY_MARK, "") or "").split("|")
+if "env" in s and not s["env"]:
+    del s["env"]
 perm = s.get("permissions", {})
+if "deny" in perm:
+    perm["deny"] = [r for r in perm["deny"] if r not in ours]
+    if not perm["deny"]:
+        del perm["deny"]
 if "allow" in perm:
     perm["allow"] = [r for r in perm["allow"] if f"{here}/tools/squeeze.py" not in r]
     if not perm["allow"]:
         del perm["allow"]
-    if not perm:
-        del s["permissions"]
+if "permissions" in s and not s["permissions"]:
+    del s["permissions"]
 
 if not un:
     for ev, items in hooks.items():
@@ -87,6 +104,13 @@ if not un:
     for r in allow:
         s.setdefault("permissions", {}).setdefault("allow", []).append(r)
         say(f"allow  {r}")
+    if "--no-deny" not in args:
+        have = s.setdefault("permissions", {}).setdefault("deny", [])
+        added = [r for r in DENY if r not in have]
+        have.extend(added)
+        if added:
+            s.setdefault("env", {})[DENY_MARK] = "|".join(added)
+            say(f"deny   {', '.join(added)}")
 
 if json.dumps(s, sort_keys=True) != before:
     if not dry:

@@ -49,7 +49,7 @@ Where the saving comes from, tokens vs plain Claude Code:
 | ponytail | 0% | +13% | +4% | +6% |
 | caveman | +4% | -33% | +10% | -27% |
 
-caveman cuts output as much as we do, but its own prompt costs more than that saves on these tasks. Differences under ~10% are run-to-run noise, so read the long-session `init` result as "no saving in cost". Each tool was installed the way its README says (both as Claude Code plugins). The output budget is a ~120-token rule set added at session start (`hooks/terse_hook.py`); without it, `init` measured -21% / +7% / -19% in the same run.
+caveman cuts output as much as we do, but its own prompt costs more than that saves on these tasks. Differences under ~10% are run-to-run noise, so read the long-session `init` result as "no saving in cost". Each tool was installed the way its README says (both as Claude Code plugins). The output budget was then a ~120-token rule set added at session start (`hooks/terse_hook.py`, now ~280 tokens); without it, `init` measured -21% / +7% / -19% in the same run.
 
 **On a real setup** (the author's machine: many skills and plugins, a project with memory), the first request of a fresh session went from 46,018 to 29,179 tokens (-37%), and its cost on a warm cache from $0.0031 to $0.0004: without slim, part of the prompt start changes on every run and misses the cache. Check yours with `claude-lean report --compare`.
 
@@ -125,8 +125,18 @@ Claude Lean shrinks the parts that don't need to be there:
 - **Slim.** On by default. Turns off Artifacts, Workflows, git instructions, background tasks, cron and the advisor tool, which cuts a typical setup from 49.5K to 24.9K tokens per request. Skip it with `--no-slim`.
 - **Lite.** `npx claude-lean lite` starts Claude Code with just Read, Edit, Write, Bash, Grep, Glob, Agent and TodoWrite: no MCP servers, no skills. On a clean install that's 5.4K tokens before you type instead of 17.2K. `--keep-mcp` and `--keep-skills` bring those back.
 - **Output filter.** For pytest, jest, npm, pip, cargo, go, docker, make and more. Drops progress bars, download chatter, passing tests and repeated lines; keeps errors, tracebacks and summaries. Dev servers and watchers are never touched.
+- **Output budget.** About 280 tokens of standing rules at session start: smallest change, 1-3 line answers, edit instead of rewriting, do the reading yourself instead of fanning out to subagents, batch independent tool calls, text before screenshots. `--no-terse` keeps only the subagent, web and batching rules.
+- **Web search budget.** Claude Code's WebSearch is a separate model request that re-sends the conversation as uncached input (~$0.07 a search on Sonnet). The hook serves searches itself from public search engines plus GitHub's repository search, skips pages an earlier search already showed, blocks repeated queries, and caps the paid searches at 15 per session (`LEAN_WEB_SEARCHES`; `LEAN_WEB_SEARCH=0` turns its own search off). On THOL's web research task the cap alone cut cost 36% with a higher score.
+- **Read guard.** A full read of a file over 1,000 lines (`LEAN_READ_LINES`) is paused once and Claude is pointed at Grep or a line range; repeating the read goes through. A re-read of an unchanged file returns a one-line note instead of the whole file again (`LEAN_READ_DEDUPE=0` to turn off). Reads were 36% of the author's own spend.
+- **Generated files.** `node_modules`, minified JS/CSS and source maps are denied to Read (`--no-deny` to keep them readable).
+- **MCP results.** JSON from MCP tools loses its nulls, empty fields and indentation before Claude sees it; every other value stays exactly as it was (`LEAN_MCP_COMPACT=0`).
+- **Retry loops.** When the same command fails a third time with the same error, Claude gets one note to change approach (`LEAN_LOOP_AT`).
+- **Compaction.** When Claude Code compacts a long session, the summary is told to keep paths, commands, errors, decisions and the next step, and to drop file contents and logs.
 - **Audit.** `npx claude-lean audit` finds skills and MCP servers you load on every request but never use.
 - **Memory check.** `npx claude-lean memory` shows what your memory files and CLAUDE.md add to every request.
+- **Where the money went.** `npx claude-lean report` now also estimates what each tool's results cost while they sat in the context, and shows fast-mode spend.
+
+Every lever we know of, what Claude Lean covers and what it doesn't yet: [docs/COST-MAP.md](docs/COST-MAP.md).
 
 ### Stay safe
 

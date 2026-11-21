@@ -13,10 +13,13 @@ import sys
 
 OUTPUT = """- Write the smallest change that solves the task. Reuse existing code and the standard library; add no abstraction, option, file or dependency nobody asked for.
 - Final answer: lead with the result in 1-3 lines. No recap of steps, no restated question, no unasked options.
+- Change files with Edit; use Write only for new files or full rewrites. Keep a to-do list only for 4+ steps.
 """
 AGENTS = ("- Do the reading yourself with Grep, Glob and Read; start a subagent only when the user asks for one or the search is truly open-ended.\n"
           "- Web: one WebSearch costs about five WebFetch calls. Search to find sources, then WebFetch the richest page (an awesome-list, "
-          "GitHub topic page, registry or docs index) instead of running many narrow searches; never repeat a query you already ran.\n")
+          "GitHub topic page, registry or docs index) instead of running many narrow searches; never repeat a query you already ran.\n"
+          "- Run independent reads, searches and commands together in one turn; every extra turn re-reads the whole context.\n"
+          "- Browser and computer use: read the page text first; take a screenshot only to check layout.\n")
 KEEP = "- Never trim correctness: keep needed validation and error handling, and keep code, commands, paths and errors exact."
 RULES = "Output budget (Claude Lean):\n" + OUTPUT + AGENTS + KEEP
 

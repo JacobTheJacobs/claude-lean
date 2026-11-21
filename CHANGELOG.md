@@ -3,6 +3,20 @@
 ## [0.2.4] - 2026-11-20
 
 ### Added
+- Read guard (`hooks/read_guard.py`): a full read of a file over 1,000 lines is paused once with its size and a hint
+  to Grep or read a range; an identical re-read of an unchanged file (no compaction since) returns a one-line note.
+  Measured on the author's logs: Read results were 36% of spend.
+- Deny rules for `node_modules`, minified JS/CSS and source maps (`--no-deny` to skip; uninstall removes only ours).
+- MCP result compaction (`hooks/mcp_compact.py`): drops null/empty JSON fields and indentation, every other value kept.
+- Retry-loop note (`hooks/loop_guard.py`, PostToolUseFailure): the third identical failure of a command gets one note.
+- Compaction instructions (`hooks/compact_hook.py`, PreCompact): keep paths, commands, errors, decisions, next step.
+- Web search: GitHub's repository search API joins the public engines for project queries; pages an earlier search
+  already showed are listed only as a count.
+- Output budget: edit instead of rewriting, to-do list only for 4+ steps, batch independent tool calls, page text
+  before screenshots (~280 tokens in all).
+- `report`: estimated cost of each tool's results while in context; fast-mode spend; the long-context tip no longer
+  recommends a fresh session per task (measured to cost more).
+- docs/COST-MAP.md: every cost lever, with status.
 - No-subagent rule in the output budget: "do the reading yourself with Grep, Glob and Read". Slim alone made Claude start
   9-10 Explore subagents on reading tasks (THOL Django questions +109%); with the rule, 0 of 3 runs fanned out and the task
   costs 9% less than plain. Kept under `--no-terse` / `LEAN_TERSE=0`.
@@ -12,7 +26,7 @@
   Long-session guard, handoff, cache guard, both skills, and `/lean:slim`, `/lean:report`, `/lean:audit`,
   `/lean:memory`. The output filter stays npm-only (its rewritten command needs a permission rule a plugin can't add).
 - `tools/slim.py` (`/lean:slim on|off`): adds or removes the 6 slim settings; `install.sh` now uses it too.
-- Output budget (`hooks/terse_hook.py`, on by default, `--no-terse` to skip, `LEAN_TERSE=0` per session): ~120 tokens of
+- Output budget (`hooks/terse_hook.py`, on by default, `--no-terse` to skip, `LEAN_TERSE=0` per session): ~120 tokens (now ~280) of
   standing rules at session start (smallest change, 1-3 line final answers, never trim correctness). Long sessions
   write 25% fewer output tokens; short tasks -37% cost vs -21% without it.
 - Measured against ponytail 5.3.3 and caveman v4.1.0 on a clean base (Haiku 5.5, 238 tasks): `init` -37% / -2% / -30%

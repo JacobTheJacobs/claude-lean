@@ -99,6 +99,60 @@ def collect(days: int, project: str | None):
     return rows
 
 
+def tool_costs(days: int, project: str | None):
+    """Estimated cost of each tool's results while they sit in the context: written to cache once, then re-read by
+    every later request until the session ends or is compacted. Main-thread transcripts only; ~4 characters a token."""
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)).isoformat()
+    out = collections.Counter()
+    for proj in sorted(ROOT.glob("*")):
+        if project and project not in proj.name:
+            continue
+        for t in proj.glob("*.jsonl"):
+            if t.stat().st_mtime < (dt.datetime.now() - dt.timedelta(days=days + 1)).timestamp():
+                continue
+            names, added, requests, model = {}, [], 0, ""   # added: [tool, tokens, added at, dropped at]
+            seen = set()
+            try:
+                fh = t.open("rb")
+            except OSError:
+                continue
+            with fh:
+                for line in fh:
+                    if b"compact_boundary" in line or b'"isCompactSummary":true' in line:
+                        for x in added:                 # compaction: earlier results leave the context
+                            x[3] = requests if x[3] is None else x[3]
+                        continue
+                    if b'"tool_use"' not in line and b'"tool_result"' not in line and b'"usage"' not in line:
+                        continue
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    if d.get("timestamp", "") < since:
+                        continue
+                    m = d.get("message") or {}
+                    if m.get("usage") and m.get("id") not in seen and not str(m.get("model", "<")).startswith("<"):
+                        seen.add(m.get("id"))
+                        requests += 1
+                        model = m["model"]
+                    for b in m.get("content") if isinstance(m.get("content"), list) else []:
+                        if not isinstance(b, dict):
+                            continue
+                        if b.get("type") == "tool_use":
+                            n = b.get("name", "?")
+                            names[b.get("id")] = "mcp:" + n.split("__")[1] if n.startswith("mcp__") else n
+                        elif b.get("type") == "tool_result":
+                            c = b.get("content")
+                            size = len(c) if isinstance(c, str) else len(json.dumps(c))
+                            added.append([names.get(b.get("tool_use_id"), "?"), size // 4, requests, None])
+            r = rate(model, 0)
+            if not r:
+                continue
+            for tool, tokens, at, end in added:
+                out[tool] += tokens * (r[4] + r[2] * max(0, (requests if end is None else end) - at)) / 1e6
+    return out
+
+
 TS = re.compile(rb'"timestamp":"([^"]+)"')
 
 
@@ -271,6 +325,8 @@ def main():
         usd["model:" + model] += c
         usd["proj:" + proj] += c
         usd["sess:" + proj + "/" + sid[:8]] += c
+        if u.get("speed") == "fast":
+            usd["fast"] += c
         r = rate(model, 0)
         if r:
             usd["class:cache read"] += u.get("cache_read_input_tokens", 0) * r[2] / 1e6
@@ -295,13 +351,21 @@ def main():
     block("by model", "model:")
     block("by project", "proj:")
     block("top sessions", "sess:")
+    tools = tool_costs(a.days, a.project)
+    if tools:
+        print("\ntool results kept in context (estimate: cache write once + re-read by every later request)")
+        for k, v in tools.most_common(8):
+            print(f"  {k:<52} ${v:8.2f}  {v / t:5.0%}")
+    if usd["fast"]:
+        print(f"\nfast mode: ${usd['fast']:.2f} at standard list price ({usd['fast'] / t:.0%}); fast mode is billed at a "
+              "premium, so the real figure is higher")
     tips = []
     if hit < 0.8:
         tips.append("cache read share under 80%: something rewrites the prompt start (CLAUDE.md/settings/effort edits, model switches, long pauses)")
     if usd["class:cache write"] / t > 0.3:
         tips.append("cache writes over 30% of spend: fewer mid-session model/effort switches; resume less after long breaks")
     if usd["class:cache read"] / t > 0.5 and avg > 80_000:
-        tips.append(f"cache reads are {usd['class:cache read'] / t:.0%} of spend at ~{avg / 1000:.0f}K tokens a request: the context is too long; /clear or a new session per task, /compact earlier, hand bulky reads to `reader`")
+        tips.append(f"cache reads are {usd['class:cache read'] / t:.0%} of spend at ~{avg / 1000:.0f}K tokens a request: the context is long; /clear when you switch to unrelated work (not between related tasks: measured, a fresh session per task costs more), and keep bulky reads and logs out of the context (see the tool table above)")
     if usd["class:output"] / t > 0.3:
         tips.append("output over 30% of spend: ask for shorter answers (skills/lean)")
     if usd["who:subagent"] / t > 0.1:

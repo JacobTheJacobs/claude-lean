@@ -10,6 +10,7 @@ Status labels:
 - **MISSING**: not built.
 - **REJECTED**: measured, and it cost more or saved nothing.
 - **VERIFY**: a claim we have not checked yet.
+- **BLOCKED**: needs something Claude Code doesn't ship yet.
 
 Numbers come from our evals (`evals/`, Haiku 5.5) and our local THOL runs (Sonnet 4.6, Claude Code 2.1.239), unless
 a line says otherwise.
@@ -68,46 +69,46 @@ uncached input per run.
 | A3 | Fixed prompt | Audit unused skills and MCP servers | DONE | small (the skill list is capped) |
 | A4 | Fixed prompt | Memory and CLAUDE.md size check | DONE | depends on the user's setup |
 | A5 | Fixed prompt | Per-project MCP and plugin profiles | MISSING | |
-| A6 | Fixed prompt | Trim long skill and agent descriptions | MISSING | |
+| A6 | Fixed prompt | Trim long skill and agent descriptions | DONE (audit shows description sizes) |  |
 | B1 | Cache | Warn before edits that rebuild the cache | DONE | |
 | B2 | Cache | Keep the prompt start stable across sessions | DONE (slim) | first request on a warm cache: $0.0031 → $0.0004 |
-| B3 | Cache | 5-minute vs 1-hour cache choice | VERIFY | 1-hour writes cost 2x, 5-minute writes 1.25x |
-| B4 | Cache | Warn on model, effort or MCP changes mid-session | MISSING | |
+| B3 | Cache | 5-minute vs 1-hour cache choice | VERIFY | settings exist from Claude Code 2.1.242 (`CLAUDE_CODE_PROMPT_CACHE_TTL`, `FORCE_PROMPT_CACHING_5M`); not measured yet |
+| B4 | Cache | Warn on model, effort or MCP changes mid-session | BLOCKED | needs the PostModelSwitch hook event, not in Claude Code 2.1.239 |
 | C1 | Conversation growth | Output filter for Bash logs | DONE (npm only) | noisy builds -30% |
-| C2 | Conversation growth | Replace identical re-reads with a short note | MISSING | |
-| C3 | Conversation growth | Large-file read guard (read a range or search instead) | MISSING | |
-| C4 | Conversation growth | Never read generated files (`node_modules`, lockfiles, builds) | MISSING | |
-| C5 | Conversation growth | Compact MCP results | MISSING | |
-| C6 | Conversation growth | Screenshots: read text first, fewer images | MISSING | |
-| C7 | Conversation growth | Compact web-search results; skip URLs already shown | PARTIAL | |
+| C2 | Conversation growth | Replace identical re-reads with a short note | DONE, not cost-measured yet | live-tested: re-read replaced by a one-line note, edits still work |
+| C3 | Conversation growth | Large-file read guard (read a range or search instead) | DONE, not cost-measured yet | live-tested |
+| C4 | Conversation growth | Never read generated files (`node_modules`, lockfiles, builds) | DONE (npm only), not cost-measured yet |  |
+| C5 | Conversation growth | Compact MCP results | DONE, not cost-measured yet | live-tested: demo MCP result 1.3K → 0.5K characters |
+| C6 | Conversation growth | Screenshots: read text first, fewer images | DONE (rule), not cost-measured yet |  |
+| C7 | Conversation growth | Compact web-search results; skip URLs already shown | DONE, THOL test pending |  |
 | C8 | Conversation growth | Compaction timing | REJECTED (compact early: +32%) | |
-| C9 | Conversation growth | Steer what the compaction summary keeps | MISSING | |
+| C9 | Conversation growth | Steer what the compaction summary keeps | DONE, not cost-measured yet |  |
 | D1 | Turns | No subagent fan-out rule | DONE | THOL Django question task +109% → -9% |
-| D2 | Turns | Batch independent tool calls in one turn | MISSING | |
-| D3 | Turns | Stop retry loops (the same failing command again and again) | MISSING | |
+| D2 | Turns | Batch independent tool calls in one turn | DONE (rule), not cost-measured yet |  |
+| D3 | Turns | Stop retry loops (the same failing command again and again) | DONE, not cost-measured yet | live-tested: note arrives on the 3rd identical failure |
 | D4 | Turns | Long-session note, `/clear` advice, handoff | DONE | measured: a fresh session per task costs more |
 | E1 | Output | Output budget rules | DONE | long-session output -25%; THOL output -19% to -25% |
 | E2 | Output | Thinking and effort level per task | PARTIAL | `--effort low` on Opus -6.5% (noise level) |
-| E3 | Output | Edit instead of rewriting whole files | MISSING | |
-| E4 | Output | Less to-do list and progress chatter | MISSING | |
+| E3 | Output | Edit instead of rewriting whole files | DONE (rule), not cost-measured yet |  |
+| E4 | Output | Less to-do list and progress chatter | DONE (rule), not cost-measured yet |  |
 | F1 | Model choice | Haiku `reader` agent for read-only lookups | DONE (opt-in) | |
 | F2 | Model choice | Subagents on Haiku | REJECTED | -2%, noise |
 | F3 | Model choice | Opus advisor | REJECTED | +24% |
 | F4 | Model choice | Pick the model by task | MISSING | |
-| F5 | Model choice | Fast mode warning | MISSING | |
+| F5 | Model choice | Fast mode warning | DONE (report line) |  |
 | G1 | Web | Web rule (fetch pages rather than many searches) | DONE | -6% vs plain |
 | G2 | Web | Search cap (15 paid searches per session) | DONE | web research -36%, score 0.57 vs 0.50 |
 | G3 | Web | Own search through public engines instead of paid WebSearch | DONE, THOL test pending | 0 paid searches in a live test |
-| G4 | Web | GitHub's official search API as a second source | MISSING | |
+| G4 | Web | GitHub's official search API as a second source | DONE, THOL test pending |  |
 | G5 | Web | Fetch pages ourselves, without the Haiku summary | MISSING | |
 | H1 | MCP | Load tools only when needed | built into Claude Code | |
-| H2 | MCP | Compact MCP results | MISSING | same as C5 |
+| H2 | MCP | Compact MCP results | DONE | same as C5 |
 | H3 | MCP | Turn MCP servers on per project | MISSING | same as A5 |
-| I1 | Computer use | Read text first, fewer screenshots | MISSING | same as C6 |
+| I1 | Computer use | Read text first, fewer screenshots | DONE (rule) | same as C6 |
 | I2 | Computer use | Shrink screenshots | MISSING | |
 | J1 | Billing | Daily dollar cap | DONE | |
 | J2 | Billing | Cost report, and before/after comparison | DONE | |
-| J3 | Billing | Cost by tool (which tool cost what) | MISSING | |
+| J3 | Billing | Cost by tool (which tool cost what) | DONE (estimate) | author's logs, 2 days: Read results 36% of spend, Bash 4% |
 | K1 | CI | GitHub Action with lean defaults | DONE (ready, not released) | |
 | L1 | Hidden requests | Measure the auto-mode check, titles and summaries | VERIFY | |
 
@@ -135,7 +136,7 @@ of the price on most turns, but it is written in full at the start of every sess
   `settings.json` (`enabledMcpjsonServers`, plugin enable lists).
   - Payoff: large on heavy setups. The author's machine has many plugins and a 46K-token first request.
   - Next: `claude-lean profile` writes a project `settings.json` from what `audit.py` saw used in that project.
-- **A6 Description trimming (MISSING).** Some skills, plugins and agents ship descriptions of 1-2K characters. The
+- **A6 Description trimming (DONE in audit).** `audit` already shows each skill's description size. Some skills, plugins and agents ship descriptions of 1-2K characters. The
   listing is capped, but long descriptions still crowd it.
   - Next: have `audit` report the longest descriptions, and say which ones belong to the user (editable) and which to
     plugins (not editable).
@@ -146,12 +147,12 @@ of the price on most turns, but it is written in full at the start of every sess
   rebuilds the whole cached prompt.
 - **B2 Stable prompt start (DONE through slim).** Without slim, part of the prompt start changed on every run and
   missed the cache. Measured on the author's setup: first request on a warm cache $0.0031 → $0.0004.
-- **B3 Cache duration (VERIFY).** THOL billed cache writes at $6/M, the 1-hour price, which is 2x input instead of
+- **B3 Cache duration (VERIFY).** Claude Code 2.1.242 added `CLAUDE_CODE_PROMPT_CACHE_TTL` (`5m`/`1h`), `FORCE_PROMPT_CACHING_5M` and `promptCacheTtl`; the default is 1 hour on subscriptions. Our THOL runs used 2.1.239, which predates them. THOL billed cache writes at $6/M, the 1-hour price, which is 2x input instead of
   1.25x.
   - For short sessions, 5-minute writes would be cheaper.
   - Next: check whether Claude Code has a setting for this, and measure short tasks with each. The first run of a fresh
     setup paid +8K tokens of cache writes, which is what pushed THOL's bugfix task to +9%.
-- **B4 Mid-session change warning (MISSING).** Switching model or effort, or turning an MCP server on or off,
+- **B4 Mid-session change warning (BLOCKED).** Claude Code's docs list a PostModelSwitch hook event, but 2.1.239 doesn't have it; build this once it ships. Switching model or effort, or turning an MCP server on or off,
   rebuilds the cache. README habit 3 says so, but no hook enforces it.
   - Next: a UserPromptSubmit check that compares the current model and effort with the session's start and warns
     once (a note to the user, no tokens added).
@@ -164,30 +165,30 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 - **C1 Output filter (DONE, npm only).** Trims test and build logs and keeps failures. Noisy builds -30%.
   - It never fired in long sessions, because Claude already pipes to `tail` and `grep` itself.
   - The plugin can't include it: its rewritten command needs a permission rule.
-- **C2 Re-read dedupe (MISSING).** Claude often reads the same file 2-4 times in a session.
+- **C2 Re-read dedupe (DONE: `hooks/read_guard.py`, live-tested; edits still work after a deduped read).** Claude often reads the same file 2-4 times in a session.
   - A PostToolUse hook on Read can replace an identical re-read with "unchanged since your read at turn N", using
     `updatedToolOutput`.
   - Risk: after compaction the earlier copy is gone. So only dedupe when no compaction happened since that read, which
     the hook can see in the transcript.
   - tokenade does this ("identical re-reads become a tiny reference, or just the diff").
-- **C3 Large-file guard (MISSING).** A PreToolUse hook on Read: for a file over about 1,500 lines with no
+- **C3 Large-file guard (DONE: `hooks/read_guard.py`, 1,000 lines by default, `LEAN_READ_LINES`).** A PreToolUse hook on Read: for a file over about 1,500 lines with no
   offset/limit, block once and suggest a range, a Grep, or an outline. Claude can repeat the call to read it all.
-- **C4 Never read generated files (MISSING).** Add `permissions.deny` rules for `Read(**/node_modules/**)`,
+- **C4 Never read generated files (DONE, npm install; `--no-deny` to skip).** Add `permissions.deny` rules for `Read(**/node_modules/**)`,
   lockfiles, `dist/` and `build/`, and minified files.
   - The plugin can't add permission rules, so this is npm only (the same limit as C1).
   - Risk: some tasks need a lockfile, so keep the list conservative and give a flag to skip it.
-- **C5 MCP result compaction (MISSING).** MCP tools often return pretty-printed JSON with nulls, empty fields and long
+- **C5 MCP result compaction (DONE: `hooks/mcp_compact.py`, lossless mode only; live-tested).** MCP tools often return pretty-printed JSON with nulls, empty fields and long
   lists.
   - A PostToolUse hook (`updatedMCPToolOutput`) can strip nulls and empties, remove the formatting, and shorten lists
     over N items with a "+K more" note.
   - That is mostly lossless; list shortening is the lossy part, so keep it opt-in or set high.
   - tokenade has `mcp_compact.rs`.
-- **C6 Screenshots (MISSING).** Each screenshot is an image of about 1-1.5K tokens (VERIFY at today's sizes), and
+- **C6 Screenshots (DONE as a rule; shrinking images is I2).** Each screenshot is an image of about 1-1.5K tokens (VERIFY at today's sizes), and
   they pile up.
   - Rule: read the page as text or through its accessibility tree where possible; screenshot only to check layout;
     not after every click.
   - A hook could shrink images, but that needs an image library and risks quality. See I2.
-- **C7 Web results (PARTIAL).**
+- **C7 Web results (DONE: pages an earlier search showed are listed only as a count).**
   - Our own search returns up to 15 compact hits, about 1.2K tokens per search.
   - Missing: skip URLs already shown in earlier searches, and compact native WebSearch results when we fall back to
     it (tokenade's `websearch_post`).
@@ -195,7 +196,7 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
   cost money and rebuild the cache.
   - tokenade goes the other way: `CLAUDE_CODE_AUTO_COMPACT_WINDOW=700000`, to compact later.
   - Next: measure compacting late on THOL's long tasks (VERIFY).
-- **C9 Compaction summary content (MISSING).** A PreCompact hook can tell the summary what to keep: open decisions,
+- **C9 Compaction summary content (DONE: `hooks/compact_hook.py`).** A PreCompact hook can tell the summary what to keep: open decisions,
   file paths, failing tests. A better summary means fewer re-reads after compaction. tokenade has a PreCompact hook.
 
 ### D. The number of turns
@@ -203,11 +204,11 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 - **D1 No subagent fan-out (DONE).**
   - Slim on its own led to 9-10 Explore subagents on reading tasks: THOL Django question task +109%, seo-audit +28%.
   - The rule "do the reading yourself" brought them to -9% and -11%.
-- **D2 Batch tool calls (MISSING).**
+- **D2 Batch tool calls (DONE as a rule).**
   - A rule: run independent reads, searches and commands together in one turn.
   - Every turn saved is one fewer full re-read of the conversation.
   - Measure the turn count before and after on THOL.
-- **D3 Retry-loop breaker (MISSING).** When the same command fails 3 times with the same error, add a note (through
+- **D3 Retry-loop breaker (DONE: `hooks/loop_guard.py`, PostToolUseFailure, live-tested).** When the same command fails 3 times with the same error, add a note (through
   PostToolUse additionalContext): "same failure 3 times; read the error, change approach, or ask".
   - tokenade calls this "anti-derailment" and aims it at long debugging tasks.
   - It would help on THOL's long debugging tasks (cascade 0.79 vs tokenade 0.65; pipeline 0.78 vs 0.73).
@@ -224,9 +225,9 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
   - Measured: `--effort low` on Opus -6.5%, which is noise level on our tasks.
   - Missing: guidance by task type (low for lookups and edits, high for debugging).
   - The effort setting itself is the user's choice; changing it mid-session rebuilds the cache (B4).
-- **E3 Edit, don't rewrite (MISSING).** Rule: change files with Edit; use Write only for new files or full
+- **E3 Edit, don't rewrite (DONE as a rule).** Rule: change files with Edit; use Write only for new files or full
   rewrites. Rewriting a 400-line file to change 3 lines costs about 400 lines of output.
-- **E4 To-do and progress chatter (MISSING).** Each to-do list update is a tool call (a turn) plus output.
+- **E4 To-do and progress chatter (DONE as a rule; no setting disables the tool, `permissions.deny` can).** Each to-do list update is a tool call (a turn) plus output.
   - Rule: use the to-do list only for 4 or more steps.
   - VERIFY whether a Claude Code setting turns it off.
 
@@ -238,7 +239,7 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 - **F4 Model by task (MISSING).** Sonnet cost 14x Haiku on our short tasks with the same pass rate (19/20 vs 20/20).
   - Next: a SessionStart or UserPromptSubmit note that suggests Haiku for small mechanical tasks.
   - It must never switch models on its own: switching rebuilds the cache (B4), and it is the user's call.
-- **F5 Fast mode (MISSING).** Fast mode is billed at a premium. Next: show it in `report` as its own line.
+- **F5 Fast mode (DONE: `report` shows fast-mode spend).** Fast mode is billed at a premium. Next: show it in `report` as its own line.
 
 ### G. Web
 
@@ -253,7 +254,7 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
   - Live test: 0 paid searches, correct answer.
   - Weak spot: only DuckDuckGo answers from the test machine; the others block it.
   - Off with `LEAN_WEB_SEARCH=0`.
-- **G4 GitHub search API (MISSING).** For project and repo queries, GitHub's official search API returns real repos
+- **G4 GitHub search API (DONE: joins the engines for project queries; repos under 10 stars dropped).** For project and repo queries, GitHub's official search API returns real repos
   with stars, free, with no browser imitation. Best for code research.
 - **G5 Fetch pages ourselves (MISSING).** Native WebFetch has Haiku summarize the page, which is lossy: a long
   awesome-list comes back partial.
@@ -269,13 +270,13 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 
 - **H1 Loading tools when needed.** Recent Claude Code versions hide MCP tools behind ToolSearch until they are
   needed, so their definitions cost less than they used to. Claude Lean doesn't need to do anything here.
-- **H2 Result compaction (MISSING).** See C5.
+- **H2 Result compaction (DONE).** See C5.
 - **H3 Per-project servers (MISSING).** See A5. `audit.py` already reports unused servers with the command to remove
   them.
 
 ### I. Computer use and the browser
 
-- **I1 Text first (MISSING).** See C6. It's a rule in the output budget, about 30 tokens.
+- **I1 Text first (DONE as a rule).** See C6. It's a rule in the output budget, about 30 tokens.
 - **I2 Shrink screenshots (MISSING).** A PostToolUse hook downscales images from computer-use and browser tools.
   - Needs Pillow or a similar image library (not standard Python), and risks losing small text.
   - Keep it opt-in, and measure it on a UI task first.
@@ -285,7 +286,7 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 - **J1 Daily cap (DONE).** `LEAN_DAY_USD`: a warning at 80%, the prompt blocked at 100%.
 - **J2 Reports (DONE).** `claude-lean report` shows spend by day and session; `--compare` shows fresh sessions before
   and after install.
-- **J3 Cost by tool (MISSING).** Split each session's cost by what caused it:
+- **J3 Cost by tool (DONE as an estimate in `report`).** On the author's last 2 days: Read results 36% of spend, Bash 4%. Split each session's cost by what caused it:
   - main-loop output and context growth per tool;
   - web-search side requests;
   - Haiku side requests (WebFetch, the auto-mode check);
@@ -330,32 +331,32 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 
 ## 5. What to build next
 
-Ranked by expected saving, times how many users it reaches, divided by effort. Quality risk is noted for each.
+Status on 2026-11-21: most of the map is built. What's left, in order:
 
-1. **G3 THOL test, then G4 (GitHub API) and C7 (skip URLs already shown).** Finishes the only area where tokenade
-   beats us. Low risk.
-2. **D3 retry-loop breaker, and D2 batch tool calls.** These target THOL's long debugging tasks, where tokenade leads.
-   Low risk: a note, never a block.
-3. **C2 re-read dedupe.** Large on long sessions. Medium risk; handle compaction correctly.
-4. **J3 cost by tool.** Shows each user their own biggest lever, and is how we will find the next one.
-5. **C5/H2 MCP result compaction.** Large for MCP-heavy users. Low risk if lossless by default.
-6. **C3 large-file guard and C4 rules for generated files.** Cheap to build. Low risk with an override.
-7. **E3, E4 and I1 rules** (edit, don't rewrite; less to-do chatter; text before screenshots). About 60 tokens of
-   rules. Measure output and turns on THOL.
-8. **A5 per-project MCP and plugin profiles.** Large for heavy setups.
-9. **B3 cache duration and C8 compacting late.** Needs measurement first.
-10. **G5 fetching pages ourselves, and I2 shrinking screenshots.** Quality-sensitive; opt-in only.
+1. **Measure what was just built.** Read guard, MCP compaction, retry-loop note, compaction instructions and the new
+   rules are live-tested but not cost-measured. Run THOL short and long tasks and our evals, then report the numbers,
+   good or bad, in the README.
+2. **G3/G4/C7 THOL web test** (`claude-lean-search`). It finishes the only area where tokenade beat us.
+3. **B3 cache duration.** Once Claude Code 2.1.242+ is installed, measure `CLAUDE_CODE_PROMPT_CACHE_TTL=5m` on short
+   tasks. If it saves money, add it to slim for short sessions.
+4. **C8 compacting late.** Measure `CLAUDE_CODE_AUTO_COMPACT_WINDOW=700000` on THOL's long tasks.
+5. **A5/H3 per-project MCP and plugin profiles.** Large for heavy setups.
+6. **B4 model-switch note.** When the PostModelSwitch event ships.
+7. **G5 fetching pages ourselves, and I2 shrinking screenshots.** Quality-sensitive; opt-in only, after measurement.
+8. **F4 model by task, and E2 effort by task.** These stay as advice: switching mid-session rebuilds the cache, and
+   the choice is the user's.
 
-Every item ships only after an eval shows a lower cost with the same pass rate: our evals for short, long and noisy
-tasks, and THOL for long and web tasks. A result that goes against us goes in the README.
+Every item ships as a default only after an eval shows a lower cost with the same pass rate: our evals for short,
+long and noisy tasks, and THOL for long and web tasks. A result that goes against us goes in the README.
 
 ---
 
 ## 6. Open questions
 
-- Does Claude Code have a setting to choose a 5-minute or 1-hour cache? What does each cost on short tasks? (B3)
+- What do 5-minute vs 1-hour cache writes cost on short tasks (Claude Code 2.1.242+)? (B3)
+- Do the new hooks (read guard, MCP compaction, loop note, compaction instructions, rules) lower cost on THOL and our
+  evals with the same pass rate? Built and live-tested, not yet cost-measured.
 - What does the auto-mode safety check cost per tool call, and does it show in `modelUsage`? (L)
 - What does one screenshot cost in tokens at today's sizes? (C6)
 - Does compacting late (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=700000`) save money on THOL's long tasks? (C8)
-- Is there a setting to turn off the to-do tool? (E4)
 - How long does DuckDuckGo keep answering in a 40-search session before it throttles? (G3)

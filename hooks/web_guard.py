@@ -5,9 +5,10 @@ Claude Code's WebSearch is the costliest tool on web work, and not because of th
 model request that re-sends the conversation as uncached input, plus a per-search fee (~$0.07 a search on Sonnet; on
 THOL's web-research task, ~45% of the run). So this hook avoids running it:
 1. A query that repeats an earlier one (>= 80% of its content words) is blocked: its results are already above.
-2. Otherwise the hook runs the search itself on public search engines (DuckDuckGo, Brave, Bing, Marginalia, Mojeek,
-   Yahoo; in parallel, 8 s budget, each engine benched for 10 minutes after it throttles us) and hands Claude the
-   merged hits as the block reason, which Claude reads as the search result. Off-topic pages are dropped.
+2. Otherwise the hook runs the search itself: GitHub's repository search API plus public search engines (DuckDuckGo,
+   Brave, Bing, Marginalia, Mojeek, Yahoo; in parallel, 8 s budget, each source benched for 10 minutes after it
+   throttles us) and hands Claude the merged hits as the block reason, which Claude reads as the search result.
+   Off-topic pages are dropped, and pages an earlier search already showed are listed only as a count.
 3. If that finds too little, the native WebSearch runs, up to LEAN_WEB_SEARCHES native searches a session (default
    15; 0 = no cap); past that Claude is told to WebFetch pages it already found, or finish.
 LEAN_WEB_SEARCH=0 turns step 2 off. Any hook error lets the native search run."""
@@ -53,8 +54,8 @@ def same(a, b):
 
 
 def history(transcript):
-    """[(query, served_by_us)] for every WebSearch so far in this session."""
-    calls, results = {}, {}
+    """([(query, served_by_us)] for every WebSearch so far, set of URLs our results already showed)."""
+    calls, results, shown = {}, {}, set()
     try:
         with open(transcript, encoding="utf-8", errors="replace") as f:
             for line in f:
@@ -70,13 +71,20 @@ def history(transcript):
                     if b.get("type") == "tool_use" and b.get("name") == "WebSearch":
                         calls.setdefault(b.get("id"), (b.get("input") or {}).get("query", ""))
                     elif b.get("type") == "tool_result":
-                        results[b.get("tool_use_id")] = MARK in json.dumps(b.get("content"))
+                        text = b.get("content") if isinstance(b.get("content"), str) else json.dumps(b.get("content"))
+                        results[b.get("tool_use_id")] = MARK in text
+                        if MARK in text:
+                            shown.update(key(u) for u in re.findall(r"\n   (https?://\S+)", text.replace("\\n", "\n")))
     except OSError:
         pass
-    return [(q, results.get(i, False)) for i, q in calls.items()]
+    return [(q, results.get(i, False)) for i, q in calls.items()], shown
 
 
 # ---------- our own search ----------
+
+def key(url):
+    return url.split("#")[0].rstrip("/").lower()
+
 
 def clean(s):
     return re.sub(r"\s+", " ", htmlmod.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
@@ -160,8 +168,19 @@ def yahoo(page):
     return out
 
 
-ENGINES = {  # name: (url template, cookie, parser)
+CODEY = re.compile(r"(?i)\b(github|repo|repos|repository|open[- ]?source|library|libraries|package|framework|sdk|"
+                   r"implementation|projects?|tools?|cli|plugin|awesome)\b")
+
+
+def github(page):
+    return [(f"{r['full_name']} ({r.get('stargazers_count', 0):,} stars)", r["html_url"], r.get("description") or "")
+            for r in json.loads(page).get("items", []) if r.get("stargazers_count", 0) >= 10]
+
+
+GITHUB_HEADERS = {"User-Agent": "claude-lean", "Accept": "application/vnd.github+json"}
+ENGINES = {  # name: (url template, cookie, parser); GitHub is its official API, the rest are results pages
     "duckduckgo": ("https://html.duckduckgo.com/html/?q={q}", None, ddg),
+    "github": ("https://api.github.com/search/repositories?q={q}&per_page=10", None, github),
     "brave": ("https://search.brave.com/search?q={q}&source=web", None, brave),
     "bing": ("https://www.bing.com/search?q={q}", None, bing),
     "marginalia": ("https://old-search.marginalia.nu/search?query={q}", None, marginalia),
@@ -178,7 +197,9 @@ def on_topic(hit, needles):
 
 def run_engine(name, query, needles):
     url, cookie, parse = ENGINES[name]
-    h = dict(HEADERS, **({"Cookie": cookie} if cookie else {}))
+    h = GITHUB_HEADERS if name == "github" else dict(HEADERS, **({"Cookie": cookie} if cookie else {}))
+    if name == "github":                       # repo search matches all words: send only the content words
+        query = " ".join(sorted(words(query), key=query.lower().find)) or query
     req = urllib.request.Request(url.format(q=urllib.parse.quote_plus(query)), headers=h)
     with urllib.request.urlopen(req, timeout=BUDGET - 1) as r:
         page = r.read(4_000_000).decode("utf-8", "replace")
@@ -196,7 +217,7 @@ def own_search(query, blocked_domains):
     except (OSError, ValueError):
         bench = {}
     now = time.time()
-    names = [n for n in ENGINES if bench.get(n, 0) < now]
+    names = [n for n in ENGINES if bench.get(n, 0) < now and (n != "github" or CODEY.search(query))]
     needles = [w[:6] for w in words(query) if len(w) >= 4]
     if not names:
         return []
@@ -220,11 +241,11 @@ def own_search(query, blocked_domains):
         for hit in row:                        # interleave engines: rank 1 of each, then rank 2, ...
             if not hit:
                 continue
-            key = hit[1].split("#")[0].rstrip("/").lower()
+            k = key(hit[1])
             host = urllib.parse.urlsplit(hit[1]).hostname or ""
-            if key in seen or any(host == d or host.endswith("." + d) for d in blocked_domains):
+            if k in seen or any(host == d or host.endswith("." + d) for d in blocked_domains):
                 continue
-            seen.add(key)
+            seen.add(k)
             merged.append(hit)
     return merged[:MAX_HITS]
 
@@ -240,7 +261,7 @@ def main():
     d = json.load(sys.stdin)
     ti = d.get("tool_input") or {}
     q = ti.get("query") or ""
-    past = history(d.get("transcript_path") or "")
+    past, shown = history(d.get("transcript_path") or "")
     w = words(q)
     for p, _ in past:
         if same(w, words(p)):
@@ -249,10 +270,13 @@ def main():
     if OWN and q and not ti.get("allowed_domains"):
         hits = own_search(q, ti.get("blocked_domains") or [])
         if len(hits) >= MIN_HITS:
+            new = [h for h in hits if key(h[1]) not in shown]
             lines = [f'{MARK} Web search results for "{q}" (fetched by the Claude Lean hook instead of the WebSearch '
                      "tool; treat them as this search's results and WebFetch a URL for details):"]
-            for i, (t, u, s) in enumerate(hits, 1):
+            for i, (t, u, s) in enumerate(new, 1):
                 lines.append(f"{i}. {t}\n   {u}" + (f"\n   {s[:240]}" if s else ""))
+            if len(new) < len(hits):
+                lines.append(f"({len(hits) - len(new)} more results were already shown in your earlier searches.)")
             return deny("\n".join(lines))
     native = sum(1 for _, ours in past if not ours)
     if CAP and native >= CAP:

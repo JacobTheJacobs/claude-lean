@@ -180,8 +180,57 @@ class OtherHooks(unittest.TestCase):
         self.assertTrue(w.on_topic(("LLMLingua", "https://x.org", "prompt compression"), needles))
         self.assertFalse(w.on_topic(("PROMPT definition", "https://dictionary.com", "to make happen"), needles))
 
+    def test_read_guard(self):
+        with tempfile.TemporaryDirectory() as td:
+            big, t = Path(td) / "big.txt", Path(td) / "t.jsonl"
+            big.write_text("x\n" * 1500)
+            t.write_text("")
+            pre = lambda ti: hook("read_guard.py", {"hook_event_name": "PreToolUse", "transcript_path": str(t),
+                                                    "tool_input": ti})
+            r = pre({"file_path": str(big)})
+            self.assertEqual(r["hookSpecificOutput"]["permissionDecision"], "deny")         # big, no range
+            self.assertIsNone(pre({"file_path": str(big), "limit": 100}))                   # a range is fine
+            t.write_text(json.dumps({"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,
+                "content": r["hookSpecificOutput"]["permissionDecisionReason"]}]}}) + "\n")
+            self.assertIsNone(pre({"file_path": str(big)}))                                 # repeated: allowed
+            # identical re-read -> note; changed content -> untouched
+            f = {"filePath": "/x/a.py", "content": "print(1)\n", "numLines": 2, "startLine": 1, "totalLines": 2}
+            t.write_text(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "r1",
+                "name": "Read", "input": {"file_path": "/x/a.py"}}]}}) + "\n" + json.dumps({"type": "user",
+                "message": {"content": [{"type": "tool_result", "tool_use_id": "r1", "content": "1\tprint(1)"}]},
+                "toolUseResult": {"type": "text", "file": f}}) + "\n")
+            post = lambda content: hook("read_guard.py", {"hook_event_name": "PostToolUse", "transcript_path": str(t),
+                "tool_use_id": "r2", "tool_input": {"file_path": "/x/a.py"},
+                "tool_response": {"type": "text", "file": dict(f, content=content)}})
+            r = post("print(1)\n")
+            self.assertIn("Unchanged", r["hookSpecificOutput"]["updatedToolOutput"]["file"]["content"])
+            self.assertIsNone(post("print(2)\n"))
+
+    def test_loop_guard(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td) / "t.jsonl"
+            rows = []
+            for i in range(2):
+                rows.append({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": f"b{i}",
+                             "name": "Bash", "input": {"command": "make test"}}]}})
+                rows.append({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": f"b{i}",
+                             "is_error": True, "content": "Exit code 2\nE: missing x"}]}})
+            t.write_text("".join(json.dumps(r) + "\n" for r in rows))
+            ask = lambda cmd: hook("loop_guard.py", {"transcript_path": str(t), "tool_use_id": "b9",
+                                                     "tool_input": {"command": cmd}, "error": "Exit code 2\nE: missing x"})
+            self.assertIn("failed 3 times", ask("make test")["hookSpecificOutput"]["additionalContext"])
+            self.assertIsNone(ask("make lint"))
+
+    def test_mcp_compact(self):
+        text = json.dumps({"items": [{"id": 1, "x": None, "tags": [], "ok": False, "n": 0, "s": ""}]}, indent=2)
+        r = hook("mcp_compact.py", {"tool_response": [{"type": "text", "text": text}]})
+        out = r["hookSpecificOutput"]["updatedMCPToolOutput"][0]["text"]
+        self.assertEqual(json.loads(out), {"items": [{"id": 1, "ok": False, "n": 0}]})   # false and 0 kept
+        self.assertIsNone(hook("mcp_compact.py", {"tool_response": [{"type": "text", "text": "plain words"}]}))
+
     def test_hooks_never_crash_on_garbage(self):
-        for h in ("session_guard.py", "cache_guard.py", "squeeze_hook.py", "budget.py", "handoff_hook.py", "terse_hook.py", "web_guard.py"):
+        for h in ("session_guard.py", "cache_guard.py", "squeeze_hook.py", "budget.py", "handoff_hook.py", "terse_hook.py", "web_guard.py",
+                  "read_guard.py", "loop_guard.py", "mcp_compact.py", "compact_hook.py"):
             r = run(ROOT / "hooks" / h, "not json")
             self.assertEqual(r.returncode, 0, h)
 
@@ -234,7 +283,7 @@ class Installer(unittest.TestCase):
     def test_install_idempotent_uninstall_restores(self):
         with tempfile.TemporaryDirectory() as d:
             mine = {"model": "x", "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo hi"}]}]},
-                    "permissions": {"allow": ["Read"]}}
+                    "permissions": {"allow": ["Read"], "deny": ["Read(**/*.map)"]}}  # user's own deny rule
             f = Path(d) / "settings.json"
             f.write_text(json.dumps(mine))
             self.assertEqual(self.install(d, "--dry-run").returncode, 0)
@@ -245,7 +294,9 @@ class Installer(unittest.TestCase):
             self.assertEqual(f.read_text(), once)                                      # re-run: no duplicates
             s = json.loads(once)
             self.assertEqual(s["hooks"]["Stop"], mine["hooks"]["Stop"])
-            self.assertEqual(len(s["hooks"]["PreToolUse"]), 3)                  # cache guard, web guard, filter
+            self.assertEqual(len(s["hooks"]["PreToolUse"]), 4)       # cache guard, web guard, read guard, filter
+            self.assertIn("Read(**/node_modules/**)", s["permissions"]["deny"])
+            self.assertEqual(s["permissions"]["deny"].count("Read(**/*.map)"), 1)      # not added twice
             self.assertTrue((Path(d) / "agents/reader.md").exists())
             skill = (Path(d) / "skills/handoff/SKILL.md").read_text()
             self.assertIn(str(ROOT / "tools" / "handoff.py"), skill)                   # path filled in
