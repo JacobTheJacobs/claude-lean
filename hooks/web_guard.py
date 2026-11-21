@@ -230,7 +230,7 @@ def own_search(query, blocked_domains):
             lists.append(f.result())
         elif f in done:
             bench[n] = now + BENCH
-    pool.shutdown(wait=False, cancel_futures=True)
+    pool.shutdown(wait=False)                  # (cancel_futures needs Python 3.9; the hook exits right after)
     try:
         with open(STATE, "w") as f:
             json.dump(bench, f)
@@ -267,8 +267,13 @@ def main():
         if same(w, words(p)):
             return deny(f'Claude Lean: this repeats your earlier search "{p}"; its results are above. Search a '
                         "different angle, or WebFetch a page you already found.")
-    if OWN and q and not ti.get("allowed_domains"):
-        hits = own_search(q, ti.get("blocked_domains") or [])
+    if OWN and q:
+        allowed = [x.lower() for x in ti.get("allowed_domains") or []]
+        hits = own_search(q + "".join(f" site:{x}" for x in allowed[:1]), ti.get("blocked_domains") or [])
+        if allowed:                            # keep the caller's domain limit exactly
+            on = lambda u: any(h == x or h.endswith("." + x) for h in [urllib.parse.urlsplit(u).hostname or ""]
+                               for x in allowed)
+            hits = [h for h in hits if on(h[1])]
         if len(hits) >= MIN_HITS:
             new = [h for h in hits if key(h[1]) not in shown]
             lines = [f'{MARK} Web search results for "{q}" (fetched by the Claude Lean hook instead of the WebSearch '

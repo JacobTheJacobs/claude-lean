@@ -206,6 +206,51 @@ class OtherHooks(unittest.TestCase):
             self.assertIn("Unchanged", r["hookSpecificOutput"]["updatedToolOutput"]["file"]["content"])
             self.assertIsNone(post("print(2)\n"))
 
+    def test_read_guard_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            nb = Path(td) / "n.ipynb"
+            nb.write_text('{"cells": [{"outputs": ["' + "A" * 200_000 + '"]}]}')     # 1 line, 200 KB
+            r = hook("read_guard.py", {"hook_event_name": "PreToolUse", "transcript_path": "",
+                                       "tool_input": {"file_path": str(nb)}})
+            self.assertIn("200,0", r["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_paste_note(self):
+        r = hook("session_guard.py", {"prompt": "x" * 50_000})
+        self.assertIn("stays in the context", r["systemMessage"])
+        self.assertIsNone(hook("session_guard.py", {"prompt": "short"}))
+
+    def test_statusline(self):
+        d = {"model": {"display_name": "Opus"}, "cost": {"total_cost_usd": 1.5},
+             "context_window": {"used_percentage": 40}, "prompt_cache": {"hit_ratio": 0.9}}
+        out = run(ROOT / "tools" / "statusline.py", json.dumps(d)).stdout.strip()
+        self.assertEqual(out, "Opus | $1.50 | context 40% | cache 90%")
+        self.assertEqual(run(ROOT / "tools" / "statusline.py", "garbage").stdout.strip(), "Claude")
+
+    def test_audit_profile(self):
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as proj:
+            h = Path(home)
+            for n in ("used", "idle"):
+                (h / ".claude/skills" / n).mkdir(parents=True)
+                (h / ".claude/skills" / n / "SKILL.md").write_text(f"---\nname: {n}\ndescription: d\n---\nbody")
+            (h / ".claude.json").write_text(json.dumps({"mcpServers": {"gh": {}, "db": {}}}))
+            import re as _re
+            logs = h / ".claude/projects" / _re.sub(r"[^A-Za-z0-9]", "-", str(Path(proj).resolve()))
+            logs.mkdir(parents=True)
+            for i in range(3):
+                (logs / f"s{i}.jsonl").write_text(json.dumps({"message": {"content": [
+                    {"type": "tool_use", "name": "Skill", "input": {"skill": "used"}},
+                    {"type": "tool_use", "name": "mcp__gh__list", "input": {}}]}}) + "\n")
+            local = Path(proj) / ".claude/settings.local.json"
+            local.parent.mkdir()
+            local.write_text(json.dumps({"permissions": {"deny": ["Bash(rm *)"]}}))
+            env = {"HOME": home}
+            out = run(ROOT / "tools" / "audit.py", "", env, ("--profile", proj))
+            s = json.loads(local.read_text())
+            self.assertEqual(s["skillOverrides"], {"idle": "off"}, out.stdout + out.stderr)
+            self.assertEqual(s["permissions"]["deny"], ["Bash(rm *)", "mcp__db__*"])
+            run(ROOT / "tools" / "audit.py", "", env, ("--unprofile", proj))
+            self.assertEqual(json.loads(local.read_text()), {"permissions": {"deny": ["Bash(rm *)"]}})
+
     def test_loop_guard(self):
         with tempfile.TemporaryDirectory() as td:
             t = Path(td) / "t.jsonl"
@@ -222,10 +267,11 @@ class OtherHooks(unittest.TestCase):
             self.assertIsNone(ask("make lint"))
 
     def test_mcp_compact(self):
-        text = json.dumps({"items": [{"id": 1, "x": None, "tags": [], "ok": False, "n": 0, "s": ""}]}, indent=2)
+        text = json.dumps({"next": None, "items": [{"id": 1, "x": None, "tags": [], "ok": False, "n": 0, "s": ""}]},
+                          indent=2)
         r = hook("mcp_compact.py", {"tool_response": [{"type": "text", "text": text}]})
         out = r["hookSpecificOutput"]["updatedMCPToolOutput"][0]["text"]
-        self.assertEqual(json.loads(out), {"items": [{"id": 1, "ok": False, "n": 0}]})   # false and 0 kept
+        self.assertEqual(json.loads(out), {"next": None, "items": [{"id": 1, "tags": [], "ok": False, "n": 0}]})
         self.assertIsNone(hook("mcp_compact.py", {"tool_response": [{"type": "text", "text": "plain words"}]}))
 
     def test_hooks_never_crash_on_garbage(self):

@@ -68,7 +68,7 @@ uncached input per run.
 | A2 | Fixed prompt | `lite`: core tools only, no MCP, no skills | DONE | short -57%, long -34%, noisy builds -60% |
 | A3 | Fixed prompt | Audit unused skills and MCP servers | DONE | small (the skill list is capped) |
 | A4 | Fixed prompt | Memory and CLAUDE.md size check | DONE | depends on the user's setup |
-| A5 | Fixed prompt | Per-project MCP and plugin profiles | MISSING | |
+| A5 | Fixed prompt | Per-project MCP and plugin profiles | DONE: `audit --profile` | per project: unused personal skills off, unused user MCP servers denied |
 | A6 | Fixed prompt | Trim long skill and agent descriptions | DONE (audit shows description sizes) |  |
 | B1 | Cache | Warn before edits that rebuild the cache | DONE | |
 | B2 | Cache | Keep the prompt start stable across sessions | DONE (slim) | first request on a warm cache: $0.0031 → $0.0004 |
@@ -94,7 +94,7 @@ uncached input per run.
 | F1 | Model choice | Haiku `reader` agent for read-only lookups | DONE (opt-in) | |
 | F2 | Model choice | Subagents on Haiku | REJECTED | -2%, noise |
 | F3 | Model choice | Opus advisor | REJECTED | +24% |
-| F4 | Model choice | Pick the model by task | MISSING | |
+| F4 | Model choice | Pick the model by task | ADVICE ONLY | switching mid-session rebuilds the cache; the choice is the user's |
 | F5 | Model choice | Fast mode warning | DONE (report line) |  |
 | G1 | Web | Web rule (fetch pages rather than many searches) | DONE | -6% vs plain |
 | G2 | Web | Search cap (15 paid searches per session) | DONE | web research -36%, score 0.57 vs 0.50 |
@@ -103,7 +103,7 @@ uncached input per run.
 | G5 | Web | Fetch pages ourselves, without the Haiku summary | MISSING | |
 | H1 | MCP | Load tools only when needed | built into Claude Code | |
 | H2 | MCP | Compact MCP results | DONE | same as C5 |
-| H3 | MCP | Turn MCP servers on per project | MISSING | same as A5 |
+| H3 | MCP | Turn MCP servers on per project | DONE | same as A5 |
 | I1 | Computer use | Read text first, fewer screenshots | DONE (rule) | same as C6 |
 | I2 | Computer use | Shrink screenshots | MISSING | |
 | J1 | Billing | Daily dollar cap | DONE | |
@@ -111,6 +111,14 @@ uncached input per run.
 | J3 | Billing | Cost by tool (which tool cost what) | DONE (estimate) | author's logs, 2 days: Read results 36% of spend, Bash 4% |
 | K1 | CI | GitHub Action with lean defaults | DONE (ready, not released) | |
 | L1 | Hidden requests | Measure the auto-mode check, titles and summaries | VERIFY | |
+| M1 | Visibility | Cost status line (cost, context, cache hit rate, 5-hour limit) | DONE (npm only) | |
+| M2 | Prompt | Note on pasted prompts over ~10K tokens | DONE | |
+| M3 | Conversation growth | Pause reads of files over 100 KB (notebooks, one-line JSON) | DONE | closes a gap in C3 |
+| M4 | Conversation growth | Large skills stay in context after they run | DONE (audit shows the size) | one skill on the author's machine is ~9K tokens |
+| M5 | Conversation growth | PDFs: extract text first when only text matters | DONE (rule) | |
+| M6 | Conversation growth | Grep in content mode returning thousands of lines | MISSING | check whether Claude Code already caps it (VERIFY) |
+| M7 | Web | Compact Claude Code's own search results when it falls back | MISSING | small: the search's cost is already paid |
+| K2 | CI | Cost settings for CI (`--max-turns`, narrow tools, lite) | DONE (README) | |
 
 ---
 
@@ -132,7 +140,7 @@ of the price on most turns, but it is written in full at the start of every sess
   request. The main gain is a shorter, more relevant skill list.
 - **A4 Memory check (DONE).** `tools/memcheck.py` sizes every project's MEMORY.md and CLAUDE.md, all of which ride
   along in every request.
-- **A5 Per-project profiles (MISSING).** Turn on only the MCP servers and plugins a project uses, via project
+- **A5 Per-project profiles (DONE: `claude-lean audit --profile [DIR]`, undo with `--unprofile`).** Writes `skillOverrides` and `mcp__<server>__*` deny rules (a deny rule on a whole server removes its tools from the context) to the project's `.claude/settings.local.json`. Turn on only the MCP servers and plugins a project uses, via project
   `settings.json` (`enabledMcpjsonServers`, plugin enable lists).
   - Payoff: large on heavy setups. The author's machine has many plugins and a 46K-token first request.
   - Next: `claude-lean profile` writes a project `settings.json` from what `audit.py` saw used in that project.
@@ -271,7 +279,7 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 - **H1 Loading tools when needed.** Recent Claude Code versions hide MCP tools behind ToolSearch until they are
   needed, so their definitions cost less than they used to. Claude Lean doesn't need to do anything here.
 - **H2 Result compaction (DONE).** See C5.
-- **H3 Per-project servers (MISSING).** See A5. `audit.py` already reports unused servers with the command to remove
+- **H3 Per-project servers (DONE through A5).** See A5. `audit.py` already reports unused servers with the command to remove
   them.
 
 ### I. Computer use and the browser
@@ -298,7 +306,7 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 ### K. CI
 
 - **K1 GitHub Action (DONE, waiting on a Marketplace release).** Runs Claude Code in CI with the lean defaults.
-- **K2 Headless limits (MISSING).** Document `--max-turns`, a narrow `--allowedTools` and lite mode for CI jobs.
+- **K2 Headless limits (DONE in the README CI section).** Document `--max-turns`, a narrow `--allowedTools` and lite mode for CI jobs.
   - In CI the prompt start is rebuilt on every run, so A2 (`lite`) matters most there.
 
 ### L. Hidden side requests (VERIFY)
@@ -340,7 +348,7 @@ Status on 2026-11-21: most of the map is built. What's left, in order:
 3. **B3 cache duration.** Once Claude Code 2.1.242+ is installed, measure `CLAUDE_CODE_PROMPT_CACHE_TTL=5m` on short
    tasks. If it saves money, add it to slim for short sessions.
 4. **C8 compacting late.** Measure `CLAUDE_CODE_AUTO_COMPACT_WINDOW=700000` on THOL's long tasks.
-5. **A5/H3 per-project MCP and plugin profiles.** Large for heavy setups.
+5. **Plugins per project.** `audit --profile` covers skills and MCP servers; turning plugins off per project (`enabledPlugins`) needs usage detection per plugin.
 6. **B4 model-switch note.** When the PostModelSwitch event ships.
 7. **G5 fetching pages ourselves, and I2 shrinking screenshots.** Quality-sensitive; opt-in only, after measurement.
 8. **F4 model by task, and E2 effort by task.** These stay as advice: switching mid-session rebuilds the cache, and
@@ -348,6 +356,16 @@ Status on 2026-11-21: most of the map is built. What's left, in order:
 
 Every item ships as a default only after an eval shows a lower cost with the same pass rate: our evals for short,
 long and noisy tasks, and THOL for long and web tasks. A result that goes against us goes in the README.
+
+---
+
+### Found while building
+
+- **Privacy:** the README said "no network calls". The web search hook sends search queries to public engines and
+  GitHub. The README now says so, and `LEAN_WEB_SEARCH=0` keeps Claude Code's own search.
+- **MCP compaction** first dropped empty lists, but `"items": []` means "nothing found". It now keeps top-level fields
+  and empty lists, and drops only nested null and "" values.
+- **Python 3.8** (the minimum we support): `web_guard` used a 3.9-only argument; fixed.
 
 ---
 

@@ -5,6 +5,8 @@
     python3 audit.py --disable-unused         move unused personal skills to ~/.claude/skills-disabled (reversible)
     python3 audit.py --disable NAME [NAME..]  move just these
     python3 audit.py --restore [NAME..]       move them back (all when no name is given)
+    python3 audit.py --profile [DIR]          for one project: turn off the personal skills and user MCP servers it
+                                              never used, in DIR/.claude/settings.local.json (reversible: --unprofile)
 
 Every skill's name and description ride along in every request, but Claude Code caps that listing, so parking skills
 saves less than their descriptions add up to (measured: 23 unused skills parked, 49.5K -> 49.3K tokens per request).
@@ -45,14 +47,20 @@ def skill_info(d):
         elif key and line.startswith((" ", "\t")):
             meta[key] += " " + line.strip()
     name = meta.get("name", d.name).strip("'\"")
-    return {"name": name, "dir": d, "tokens": (len(name) + len(meta.get("description", ""))) // 4 + 5}
+    return {"name": name, "dir": d, "tokens": (len(name) + len(meta.get("description", ""))) // 4 + 5,
+            "body": len(text) // 4}           # what the skill adds to the context, every later turn, once it runs
 
 
-def usage(days):
+def slug(path):
+    """Claude Code's log folder name for a project directory."""
+    return re.sub(r"[^A-Za-z0-9]", "-", str(Path(path).resolve()))
+
+
+def usage(days, folder=None):
     since = time.time() - days * 86400
     skills, mcp, sessions = collections.Counter(), collections.Counter(), 0
     oldest = time.time()
-    for f in PROJECTS.glob("**/*.jsonl"):
+    for f in (PROJECTS / folder if folder else PROJECTS).glob("**/*.jsonl"):
         mt = f.stat().st_mtime
         if mt < since:
             continue
@@ -101,6 +109,71 @@ def mcp_servers():
     return out
 
 
+def profile(project, days, undo=False):
+    """Per-project switches in .claude/settings.local.json: skillOverrides "off" for personal skills and a
+    permissions.deny "mcp__<server>__*" for user MCP servers this project never used. A deny rule on a whole server
+    removes its tools from Claude's context. What we added is recorded in .claude/lean-profile.json for --unprofile."""
+    proj = Path(project).resolve()
+    f, rec = proj / ".claude" / "settings.local.json", proj / ".claude" / "lean-profile.json"
+    try:
+        s = json.loads(f.read_text()) if f.exists() else {}
+        old = json.loads(rec.read_text()) if rec.exists() else {}
+    except ValueError:
+        sys.exit(f"{f} or {rec} is not valid JSON; fix it first.")
+    if f.exists():
+        shutil.copy2(f, f.with_suffix(f".json.lean-{time.strftime('%Y%m%d-%H%M%S')}.bak"))
+    ov = s.get("skillOverrides", {})
+    for n in old.get("skills", []):
+        if ov.get(n) == "off":
+            del ov[n]
+    deny = s.get("permissions", {}).get("deny", [])
+    deny[:] = [r for r in deny if r not in old.get("deny", [])]
+    added = {"skills": [], "deny": []}
+    if not undo:
+        folder = slug(proj)
+        if not (PROJECTS / folder).is_dir():
+            sys.exit(f"no Claude Code logs for {proj} yet; use it for a while first.")
+        used, mcp_used, sessions, _ = usage(days, folder)
+        if sessions < 3:
+            sys.exit(f"only {sessions} session logs for {proj}; profile after a few more sessions.")
+        skills = [i for d in sorted(SKILLS.iterdir()) if d.is_dir() and (i := skill_info(d))] if SKILLS.exists() else []
+        for sk in skills:
+            if not used[sk["name"]] and not used[sk["dir"].name] and sk["name"] not in KEEP and sk["name"] not in ov:
+                ov[sk["name"]] = "off"
+                added["skills"].append(sk["name"])
+        for n, where in mcp_servers().items():
+            r = f"mcp__{n}__*"
+            if where == "user" and not mcp_used[n] and r not in deny:
+                deny.append(r)
+                added["deny"].append(r)
+    if ov:
+        s["skillOverrides"] = ov
+    else:
+        s.pop("skillOverrides", None)
+    if deny:
+        s.setdefault("permissions", {})["deny"] = deny
+    elif "permissions" in s:
+        s["permissions"].pop("deny", None)
+        if not s["permissions"]:
+            del s["permissions"]
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps(s, indent=2) + "\n")
+    if undo or not (added["skills"] or added["deny"]):
+        rec.unlink(missing_ok=True)
+    else:
+        rec.write_text(json.dumps(added, indent=2) + "\n")
+    if undo:
+        print(f"Removed Claude Lean's project profile from {f}.")
+        return
+    print(f"{f}: {len(added['skills'])} skills off, {len(added['deny'])} MCP servers denied (unused in this project, "
+          f"last {days} days).")
+    for n in added["skills"]:
+        print(f"  skill off   {n}")
+    for r in added["deny"]:
+        print(f"  deny        {r}")
+    print(f"Applies to new sessions in {proj}. Undo: claude-lean audit --unprofile {proj}")
+
+
 def move(names, src, dst):
     dst.mkdir(parents=True, exist_ok=True)
     for n in names:
@@ -121,7 +194,12 @@ def main():
     ap.add_argument("--disable-unused", action="store_true")
     ap.add_argument("--disable", nargs="+", metavar="NAME")
     ap.add_argument("--restore", nargs="*", metavar="NAME")
+    ap.add_argument("--profile", nargs="?", const=".", metavar="DIR")
+    ap.add_argument("--unprofile", nargs="?", const=".", metavar="DIR")
     a = ap.parse_args()
+
+    if a.profile or a.unprofile:
+        return profile(a.profile or a.unprofile, a.days, undo=bool(a.unprofile))
 
     if a.restore is not None:
         names = a.restore or [d.name for d in PARKED.iterdir() if d.is_dir()] if PARKED.exists() else []
@@ -143,10 +221,11 @@ def main():
         print("Claude Code deletes logs after cleanupPeriodDays (default 30), so skills used before then show as unused. "
               "Keep any you use now and then.")
     print()
-    print(f"{'uses':>5} {'~tokens':>8}  personal skill (~/.claude/skills)")
+    print(f"{'uses':>5} {'~tokens':>8} {'when run':>9}  personal skill (~/.claude/skills)")
     for s in sorted(skills, key=lambda s: (used[s['name']] + used[s['dir'].name], -s["tokens"])):
         n = used[s["name"]] + used[s["dir"].name]
-        print(f"{n:>5} {s['tokens']:>8}  {s['name']}{'' if n or s['name'] in KEEP else '   <- unused'}")
+        big = "   <- large: stays in the context after it runs" if s["body"] > 8000 else ""
+        print(f"{n:>5} {s['tokens']:>8} {s['body']:>9}  {s['name']}{'' if n or s['name'] in KEEP else '   <- unused'}{big}")
     cost = sum(s["tokens"] for s in unused)
     print(f"\nUnused skills: {len(unused)} of {len(skills)} (descriptions ~{cost} tokens; Claude Code caps the skill "
           "listing, so the real per-request saving is smaller: measure with `claude -p hi --output-format json`).")

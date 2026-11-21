@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """MCP result compaction (PostToolUse hook, matcher mcp__.*).
 
-MCP tools often return pretty-printed JSON full of nulls and empty fields, and every byte of it is re-read on every
-later turn. For each text block that is JSON, this drops null, "", [] and {} values and removes the indentation, then
-hands Claude the smaller result. Numbers, false and every non-empty value stay exactly as they were. Results that
-aren't JSON, or that would shrink by less than 10%, are left alone. LEAN_MCP_COMPACT=0 turns it off."""
+MCP tools often return pretty-printed JSON full of nulls, and every byte of it is re-read on every later turn. For
+each text block that is JSON, this removes the indentation and drops null and "" fields inside nested records (where
+a missing field reads the same as an empty one), then hands Claude the smaller result. Top-level fields, empty lists
+and objects ("items": [] means nothing was found), numbers, false and every other value stay exactly as they were.
+Results that aren't JSON, or that would shrink by less than 10%, are left alone. LEAN_MCP_COMPACT=0 turns it off."""
 import json
 import os
 import sys
 
-def prune(v):
+def prune(v, depth=0):
     if isinstance(v, dict):
-        out = {k: prune(x) for k, x in v.items()}
-        return {k: x for k, x in out.items() if x is not None and not (isinstance(x, (str, list, dict)) and not x)}
+        out = {k: prune(x, depth + 1) for k, x in v.items()}
+        return out if depth == 0 else {k: x for k, x in out.items() if x is not None and x != ""}
     if isinstance(v, list):
-        return [prune(x) for x in v]
+        return [prune(x, depth + 1) for x in v]
     return v
 
 

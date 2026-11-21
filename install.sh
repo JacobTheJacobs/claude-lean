@@ -7,6 +7,7 @@
 #   ./install.sh --no-terse    skip the output rules (smallest change, 1-3 line answers); keeps the no-subagent-fan-out rule
 #   ./install.sh --no-deny     let Claude read node_modules, minified files and source maps (denied by default: they
 #                              are large, generated, and almost never what Claude needs)
+#   ./install.sh --no-statusline  don't add the cost status line (it's only added when you have no status line)
 #   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools and git
 #                              instructions in every request (slim drops ~24K tokens per request: short tasks -32%)
 #   ./install.sh --dry-run     show every change, write nothing
@@ -19,7 +20,7 @@ import json, os, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
-unknown = args - {"--reader", "--no-filter", "--no-slim", "--no-terse", "--no-deny", "--dry-run", "--uninstall", "-h", "--help"}
+unknown = args - {"--reader", "--no-filter", "--no-slim", "--no-terse", "--no-deny", "--no-statusline", "--dry-run", "--uninstall", "-h", "--help"}
 if unknown or args & {"-h", "--help"}:
     print(open(here / "install.sh").read().split("set -euo")[0].replace("# ", "").strip())
     sys.exit(1 if unknown else 0)
@@ -78,6 +79,8 @@ slim.strip(s)
 ours = (s.get("env", {}).pop(DENY_MARK, "") or "").split("|")
 if "env" in s and not s["env"]:
     del s["env"]
+if str(here / "tools" / "statusline.py") in json.dumps(s.get("statusLine", "")):
+    del s["statusLine"]                     # ours: re-added below unless uninstalling or --no-statusline
 perm = s.get("permissions", {})
 if "deny" in perm:
     perm["deny"] = [r for r in perm["deny"] if r not in ours]
@@ -104,6 +107,9 @@ if not un:
     for r in allow:
         s.setdefault("permissions", {}).setdefault("allow", []).append(r)
         say(f"allow  {r}")
+    if "--no-statusline" not in args and "statusLine" not in s:
+        s["statusLine"] = {"type": "command", "command": py("tools/statusline.py")}
+        say("status line: session cost, context, cache hit rate")
     if "--no-deny" not in args:
         have = s.setdefault("permissions", {}).setdefault("deny", [])
         added = [r for r in DENY if r not in have]

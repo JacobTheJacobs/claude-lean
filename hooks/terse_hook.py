@@ -19,7 +19,8 @@ AGENTS = ("- Do the reading yourself with Grep, Glob and Read; start a subagent 
           "- Web: one WebSearch costs about five WebFetch calls. Search to find sources, then WebFetch the richest page (an awesome-list, "
           "GitHub topic page, registry or docs index) instead of running many narrow searches; never repeat a query you already ran.\n"
           "- Run independent reads, searches and commands together in one turn; every extra turn re-reads the whole context.\n"
-          "- Browser and computer use: read the page text first; take a screenshot only to check layout.\n")
+          "- Browser and computer use: read the page text first; take a screenshot only to check layout.\n"
+          "- PDFs: when only the text matters, extract it (pdftotext or similar) and read that instead of the PDF.\n")
 KEEP = "- Never trim correctness: keep needed validation and error handling, and keep code, commands, paths and errors exact."
 RULES = "Output budget (Claude Lean):\n" + OUTPUT + AGENTS + KEEP
 

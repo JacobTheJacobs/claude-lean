@@ -3,6 +3,16 @@
 ## [0.2.4] - 2026-11-20
 
 ### Added
+- `audit --profile [DIR]`: per-project `skillOverrides` off and `mcp__<server>__*` deny rules for skills and user MCP
+  servers that project never used (`--unprofile` undoes it); `audit` shows each skill's size once it runs.
+- Cost status line (`tools/statusline.py`): cost, context fill, cache hit rate, 5-hour limit; only added when none.
+- Pasted-prompt note (session_guard): a prompt over 40K characters gets a one-line note to the user.
+- Read guard also pauses files over 100 KB (notebooks, one-line JSON); faster transcript scan.
+- Web search honors `allowed_domains`. README privacy section now says the search hook sends queries to public
+  search engines and GitHub (it said "no network calls"); `LEAN_WEB_SEARCH=0` keeps Claude Code's search.
+- MCP compaction keeps top-level fields and empty lists (`"items": []` means nothing found); drops only nested null/"".
+- Rule: extract PDF text before reading a PDF when only the text matters. README: CI cost settings.
+- Python 3.8: web_guard no longer uses a 3.9-only argument.
 - Read guard (`hooks/read_guard.py`): a full read of a file over 1,000 lines is paused once with its size and a hint
   to Grep or read a range; an identical re-read of an unchanged file (no compaction since) returns a one-line note.
   Measured on the author's logs: Read results were 36% of spend.

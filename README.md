@@ -11,7 +11,7 @@ One command. Runs locally. Open source, no account, no telemetry.
 [![npm](https://img.shields.io/npm/v/claude-lean?color=cb3837&logo=npm)](https://www.npmjs.com/package/claude-lean)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/JacobTheJacobs/claude-lean/blob/master/LICENSE)
 [![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](#security--privacy)
-[![Runs locally](https://img.shields.io/badge/runs-100%25%20local-success)](#security--privacy)
+[![No telemetry](https://img.shields.io/badge/telemetry-none-success)](#security--privacy)
 
 **[Get started](#get-started)** · **[How it works](#how-it-works)** · **[Capabilities](#capabilities)** · **[Benchmark](#benchmark)** · **[CI](#agents-in-ci)** · **[vs JFrog Boost](#vs-jfrog-boost)** · **[Changelog](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md)**
 
@@ -69,7 +69,7 @@ Inside Claude Code:
 /lean:slim on
 ```
 
-The plugin brings the long-session guard, handoff notes, the cache guard, both skills and the `/lean:report`, `/lean:audit` and `/lean:memory` commands. Plugins can't set environment switches, so `/lean:slim on` writes the 6 slim settings to `~/.claude/settings.json` (backed up first; `/lean:slim off` undoes it). The output filter and `lite` need the npm install below. Use the plugin or `npx claude-lean init`, not both: the hooks would run twice.
+The plugin brings the output budget, the web search, read, MCP, retry-loop and compaction hooks, the long-session guard, handoff notes, the cache guard, both skills and the `/lean:report`, `/lean:audit` and `/lean:memory` commands. Plugins can't set environment switches, so `/lean:slim on` writes the 6 slim settings to `~/.claude/settings.json` (backed up first; `/lean:slim off` undoes it). Plugins can't add permission rules or a status line either, so the output filter, the generated-file deny rules, the cost status line and `lite` need the npm install below. Use the plugin or `npx claude-lean init`, not both: the hooks would run twice.
 
 ### ⌨️ npm
 
@@ -132,7 +132,9 @@ Claude Lean shrinks the parts that don't need to be there:
 - **MCP results.** JSON from MCP tools loses its nulls, empty fields and indentation before Claude sees it; every other value stays exactly as it was (`LEAN_MCP_COMPACT=0`).
 - **Retry loops.** When the same command fails a third time with the same error, Claude gets one note to change approach (`LEAN_LOOP_AT`).
 - **Compaction.** When Claude Code compacts a long session, the summary is told to keep paths, commands, errors, decisions and the next step, and to drop file contents and logs.
-- **Audit.** `npx claude-lean audit` finds skills and MCP servers you load on every request but never use.
+- **Audit.** `npx claude-lean audit` finds skills and MCP servers you load on every request but never use, and shows how much each skill adds to the context once it runs. `audit --profile` turns off, for one project only, the personal skills and user MCP servers that project never used (`--unprofile` undoes it).
+- **Status line.** Session cost, context fill, cache hit rate and your 5-hour limit, as you work. Added only when you have no status line of your own (`--no-statusline` to skip).
+- **Pasted prompts.** A prompt over ~10K tokens gets a one-line note to you: save big logs to a file and let Claude search them.
 - **Memory check.** `npx claude-lean memory` shows what your memory files and CLAUDE.md add to every request.
 - **Where the money went.** `npx claude-lean report` now also estimates what each tool's results cost while they sat in the context, and shows fast-mode spend.
 
@@ -161,6 +163,12 @@ Running Claude Code in GitHub Actions? Add Claude Lean before the step that star
 ```
 
 It writes the same settings as `npx claude-lean init` into the runner's `~/.claude`, so slim and the output filter apply to every Claude Code run in that job.
+
+CI pays the cold start on every run: a fresh runner writes the whole prompt start to cache again each time. Three settings matter more there than on your laptop:
+
+- `--max-turns N` stops a stuck job before it loops for an hour.
+- A narrow `--allowedTools` (for example `Read,Edit,Grep,Glob,Bash(npm test:*)`) keeps unused tool definitions out of every request.
+- `npx claude-lean lite -p "..."` starts with core tools only: 5.4K tokens before the prompt instead of 17.2K.
 
 ### See the impact
 
@@ -258,7 +266,7 @@ The fix is in `evals/run.py` (`step_usd`), every saved result keeps the original
 
 ## Security & privacy
 
-- **Local-only.** No network calls, no telemetry, no account. Nothing leaves your machine.
+- **Local, with one exception.** No telemetry, no account, nothing about you or your code is sent anywhere. The one network feature is web search: when Claude runs a WebSearch, the hook sends that search query (only the query) to public search engines (DuckDuckGo, Brave, Bing, Marginalia, Mojeek, Yahoo) and, for project queries, GitHub's API, instead of Claude Code's own search, which sends it to Anthropic. Set `LEAN_WEB_SEARCH=0` to keep Claude Code's search; the 15-search cap still applies.
 - **Readable.** Plain Python and JavaScript using only the standard library. No binary, no dependencies. What's on GitHub is exactly what npm installs.
 - **Your logs stay put.** `report` and `audit` read `~/.claude/projects` and print to your terminal.
 - **What it stores.** The last 200 trimmed outputs, in `~/.cache/claude-lean/out` (readable only by you), and a handoff note until it's used or 12 hours pass. `uninstall` deletes both.

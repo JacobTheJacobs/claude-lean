@@ -21,7 +21,7 @@ const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS
 
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions
 
-  claude-lean init [--dry-run] [--reader] [--no-filter] [--no-slim] [--no-terse] [--no-deny]
+  claude-lean init [--dry-run] [--reader] [--no-filter] [--no-slim] [--no-terse] [--no-deny] [--no-statusline]
                                                           install hooks into ~/.claude (backup first, re-runnable)
   claude-lean uninstall [--reader]                        remove everything it added
   claude-lean report [--days N] [--project NAME]          where your tokens and dollars went
