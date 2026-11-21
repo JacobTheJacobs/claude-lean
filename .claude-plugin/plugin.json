@@ -1,0 +1,13 @@
+{
+  "name": "lean",
+  "displayName": "Claude Lean",
+  "version": "0.2.4",
+  "description": "Cut what Claude Code sends with every request: /lean:slim drops ~24K tokens per request (short tasks -32%, same pass rate), plus a long-session guard, handoff notes, a cache guard and a usage report. Local, no telemetry.",
+  "author": { "name": "JacobTheJacobs", "url": "https://github.com/JacobTheJacobs" },
+  "homepage": "https://github.com/JacobTheJacobs/claude-lean",
+  "repository": "https://github.com/JacobTheJacobs/claude-lean",
+  "license": "MIT",
+  "keywords": ["tokens", "cost", "cache", "context", "hooks"],
+  "agents": [],
+  "hooks": "./hooks/plugin-hooks.json"
+}

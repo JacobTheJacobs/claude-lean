@@ -1,8 +1,23 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.4] - 2026-11-20
 
 ### Added
+- No-subagent rule in the output budget: "do the reading yourself with Grep, Glob and Read". Slim alone made Claude start
+  9-10 Explore subagents on reading tasks (THOL Django questions +109%); with the rule, 0 of 3 runs fanned out and the task
+  costs 9% less than plain. Kept under `--no-terse` / `LEAN_TERSE=0`.
+- THOL (Sonnet 4.6, 17 tasks, 3 runs each, Claude Code 2.1.239): +16.9% short, +26.9% long, +21.2% overall cost
+  reduction vs plain; every run passed.
+- Claude Code plugin: `/plugin marketplace add JacobTheJacobs/claude-lean`, then `/plugin install lean@claude-lean`.
+  Long-session guard, handoff, cache guard, both skills, and `/lean:slim`, `/lean:report`, `/lean:audit`,
+  `/lean:memory`. The output filter stays npm-only (its rewritten command needs a permission rule a plugin can't add).
+- `tools/slim.py` (`/lean:slim on|off`): adds or removes the 6 slim settings; `install.sh` now uses it too.
+- Output budget (`hooks/terse_hook.py`, on by default, `--no-terse` to skip, `LEAN_TERSE=0` per session): ~120 tokens of
+  standing rules at session start (smallest change, 1-3 line final answers, never trim correctness). Long sessions
+  write 25% fewer output tokens; short tasks -37% cost vs -21% without it.
+- Measured against ponytail 5.3.3 and caveman v4.1.0 on a clean base (Haiku 5.5, 238 tasks): `init` -37% / -2% / -30%
+  (short / long / noisy), `lite` -57% / -34% / -60%, ponytail +7% / +5% / +29%, caveman +11% / +6% / +15%.
+- `install.sh`, `slim.py` and `doctor` honor `CLAUDE_CONFIG_DIR`.
 - `claude-lean report --compare [DATE]`: your own fresh sessions before vs after installing (first-request size,
   cost per request and per session), from your logs.
 - `evals/compare.py`: Claude Lean vs caveman v4.1.0 vs RTK v1.2.1 on the same graded tasks. `lite` -44% to -61% in

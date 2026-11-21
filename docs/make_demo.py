@@ -127,7 +127,7 @@ class Movie:
 def main():
     init, trim = capture()
     m = Movie()
-    m.card("Claude Lean", ["Short Claude Code tasks cost 32-74% less, same pass rate.",
+    m.card("Claude Lean", ["Short Claude Code tasks cost 37-74% less, same pass rate.",
                            "Free. Local. Open source. No telemetry."], 2400)
     t = "~/shop: bash"
     L = m.typed([], "npx claude-lean init", t)

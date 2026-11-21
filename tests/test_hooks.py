@@ -141,8 +141,47 @@ class OtherHooks(unittest.TestCase):
             self.assertIn("/clear", r["systemMessage"])
             self.assertIsNone(hook("session_guard.py", {"transcript_path": str(t), "session_id": "s"}, env))  # once
 
+    def test_terse(self):
+        r = hook("terse_hook.py", {"source": "startup"})
+        self.assertEqual(r["hookSpecificOutput"]["hookEventName"], "SessionStart")
+        self.assertIn("smallest change", r["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("subagent", r["hookSpecificOutput"]["additionalContext"])
+        off = hook("terse_hook.py", {"source": "startup"}, {"LEAN_TERSE": "0"})["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("subagent", off)                # fan-out rule stays: slim alone caused it
+        self.assertIn("WebFetch", off)
+        self.assertNotIn("smallest change", off)
+
+    def test_web_guard(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td) / "t.jsonl"
+            qs = ["prompt compression open source GitHub 2025", "KV cache eviction methods"]
+            t.write_text("".join(json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": f"u{i}", "name": "WebSearch", "input": {"query": q}}]}}) + "\n"
+                for i, q in enumerate(qs)))
+            ask = lambda q, env=None: hook("web_guard.py", {"transcript_path": str(t), "tool_input": {"query": q}},
+                                           dict(env or {}, LEAN_WEB_SEARCH="0"))         # no network in tests
+            self.assertIsNone(ask("semantic caching for LLM apps"))                       # new topic: allowed
+            r = ask("GitHub prompt compression 2024 open source")                         # same content words
+            self.assertEqual(r["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertIn("repeats", r["hookSpecificOutput"]["permissionDecisionReason"])
+            r = ask("tokenizer libraries", {"LEAN_WEB_SEARCHES": "2"})                     # over the cap
+            self.assertIn("WebFetch", r["hookSpecificOutput"]["permissionDecisionReason"])
+            self.assertIsNone(ask("tokenizer libraries", {"LEAN_WEB_SEARCHES": "0"}))     # cap off
+
+    def test_web_guard_parsers(self):
+        sys.path.insert(0, str(ROOT / "hooks"))
+        import web_guard as w
+        page = ('<a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fmicrosoft'
+                '%2FLLMLingua&amp;rut=x">GitHub - microsoft/LLMLingua</a><a class="result__snippet" href="#">Prompt '
+                '<b>compression</b> for LLMs</a>')
+        self.assertEqual(w.ddg(page), [("GitHub - microsoft/LLMLingua", "https://github.com/microsoft/LLMLingua",
+                                        "Prompt compression for LLMs")])
+        needles = [x[:6] for x in w.words("prompt compression library") if len(x) >= 4]
+        self.assertTrue(w.on_topic(("LLMLingua", "https://x.org", "prompt compression"), needles))
+        self.assertFalse(w.on_topic(("PROMPT definition", "https://dictionary.com", "to make happen"), needles))
+
     def test_hooks_never_crash_on_garbage(self):
-        for h in ("session_guard.py", "cache_guard.py", "squeeze_hook.py", "budget.py", "handoff_hook.py"):
+        for h in ("session_guard.py", "cache_guard.py", "squeeze_hook.py", "budget.py", "handoff_hook.py", "terse_hook.py", "web_guard.py"):
             r = run(ROOT / "hooks" / h, "not json")
             self.assertEqual(r.returncode, 0, h)
 
@@ -206,7 +245,7 @@ class Installer(unittest.TestCase):
             self.assertEqual(f.read_text(), once)                                      # re-run: no duplicates
             s = json.loads(once)
             self.assertEqual(s["hooks"]["Stop"], mine["hooks"]["Stop"])
-            self.assertEqual(len(s["hooks"]["PreToolUse"]), 2)
+            self.assertEqual(len(s["hooks"]["PreToolUse"]), 3)                  # cache guard, web guard, filter
             self.assertTrue((Path(d) / "agents/reader.md").exists())
             skill = (Path(d) / "skills/handoff/SKILL.md").read_text()
             self.assertIn(str(ROOT / "tools" / "handoff.py"), skill)                   # path filled in

@@ -10,7 +10,7 @@ A fresh session is far cheaper than a long one, but it forgets. Write what the n
 Run this, filling in the note (max ~15 lines, plain facts, no narration):
 
 ```bash
-python3 "LEAN_TOOLS/handoff.py" save <<'NOTE'
+python3 "${CLAUDE_PLUGIN_ROOT}/tools/handoff.py" save <<'NOTE'
 Goal: <one line: what the user wants>
 Done: <what is finished, with file:line where it matters>
 State: <what is in progress, uncommitted changes, branch>

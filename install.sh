@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Claude Lean installer. Wires everything into ~/.claude for you (backup first, idempotent).
-#   ./install.sh               lean skill + long-session guard + output filter + cache guard
+#   ./install.sh               lean skill + long-session guard + output budget + output filter + cache guard
 #   ./install.sh --reader      also the Haiku reader agent (adds ~550 tokens per request; pays off on bulky lookups)
 #   ./install.sh --no-filter   skip the output filter (hooks/squeeze_hook.py)
+#   ./install.sh --no-terse    skip the output rules (smallest change, 1-3 line answers); keeps the no-subagent-fan-out rule
 #   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools and git
 #                              instructions in every request (slim drops ~24K tokens per request: short tasks -32%)
 #   ./install.sh --dry-run     show every change, write nothing
 #   ./install.sh --uninstall   remove everything Claude Lean added
-# Env: CLAUDE_DIR (default ~/.claude), LEAN_DAY_USD=N adds the daily dollar cap hook (N dollars per day).
+# Env: CLAUDE_DIR (default $CLAUDE_CONFIG_DIR, else ~/.claude), LEAN_DAY_USD=N adds the daily dollar cap hook (N dollars per day).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
@@ -15,31 +16,30 @@ import json, os, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
-unknown = args - {"--reader", "--no-filter", "--no-slim", "--dry-run", "--uninstall", "-h", "--help"}
+unknown = args - {"--reader", "--no-filter", "--no-slim", "--no-terse", "--dry-run", "--uninstall", "-h", "--help"}
 if unknown or args & {"-h", "--help"}:
     print(open(here / "install.sh").read().split("set -euo")[0].replace("# ", "").strip())
     sys.exit(1 if unknown else 0)
 dry, un = "--dry-run" in args, "--uninstall" in args
-cdir = Path(os.environ.get("CLAUDE_DIR", Path.home() / ".claude"))
+cdir = Path(os.environ.get("CLAUDE_DIR") or os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
 settings_f = cdir / "settings.json"
 py = lambda p: f"python3 {shlex.quote(str(here / p))}"    # quoted: home folders can contain spaces
 
 hooks = {"UserPromptSubmit": [("", py("hooks/session_guard.py"))],
          "SessionStart": [("", py("hooks/handoff_hook.py"))],
-         "PreToolUse": [("Edit|Write|MultiEdit", py("hooks/cache_guard.py"))]}
+         # output budget: a few standing rules so Claude writes less (output costs several times input)
+         "PreToolUse": [("Edit|Write|MultiEdit", py("hooks/cache_guard.py")),
+                        ("WebSearch", py("hooks/web_guard.py"))]}   # web search budget: ~$0.07 per search
+# --no-terse keeps only the no-subagent-fan-out rule (slim alone made Claude fan out to 9-10 subagents)
+hooks["SessionStart"].append(("startup|clear|compact", ("LEAN_TERSE=0 " if "--no-terse" in args else "") + py("hooks/terse_hook.py")))
 if "--no-filter" not in args:
     hooks["PreToolUse"].append(("Bash", py("hooks/squeeze_hook.py")))
 if os.environ.get("LEAN_DAY_USD"):
     cap = float(os.environ["LEAN_DAY_USD"])          # baked into the hook command: hooks don't see your shell env
     hooks["UserPromptSubmit"].append(("", f"LEAN_DAY_USD={cap:g} " + py("hooks/budget.py")))
 allow = [f"Bash({py('tools/squeeze.py')} *)"] if "--no-filter" not in args else []
-# Slim: Claude Code features most sessions never use, whose definitions ride along in every request.
-# Measured per request: Artifact 13.5K, Workflows 8.1K, git instructions 2.4K, background tasks 1.1K, cron 0.3K,
-# advisor 0.2K tokens. Your MCP servers, skills, web tools and subagents stay.
-SLIM = {k: "1" for k in ("CLAUDE_CODE_DISABLE_ARTIFACT", "CLAUDE_CODE_DISABLE_WORKFLOWS",
-                         "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS", "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
-                         "CLAUDE_CODE_DISABLE_CRON", "CLAUDE_CODE_DISABLE_ADVISOR_TOOL")}
-MARK = "CLAUDE_LEAN_SLIM"          # records which env keys we set, so uninstall removes only those
+sys.path.insert(0, str(here / "tools"))
+import slim                       # SLIM switches and how they are added/removed (also /lean:slim in the plugin)
 copies = [(here / "skills/lean/SKILL.md", cdir / "skills/lean/SKILL.md"),
           (here / "skills/handoff/SKILL.md", cdir / "skills/handoff/SKILL.md")]
 if "--reader" in args:
@@ -64,12 +64,7 @@ for ev, groups in list(s.get("hooks", {}).items()):
         del s["hooks"][ev]
 if "hooks" in s and not s["hooks"]:
     del s["hooks"]
-env = s.get("env", {})
-for k in (env.pop(MARK, "") or "").split(","):
-    if k and env.get(k) == "1":
-        del env[k]
-if "env" in s and not env:
-    del s["env"]
+slim.strip(s)
 perm = s.get("permissions", {})
 if "allow" in perm:
     perm["allow"] = [r for r in perm["allow"] if f"{here}/tools/squeeze.py" not in r]
@@ -87,11 +82,7 @@ if not un:
             s.setdefault("hooks", {}).setdefault(ev, []).append(g)
             say(f"hook   {ev:<17} {matcher or '*':<20} {cmd.split('/')[-1]}")
     if "--no-slim" not in args:
-        env = s.setdefault("env", {})
-        added = [k for k in SLIM if k not in env]
-        env.update({k: SLIM[k] for k in added})
-        if added:
-            env[MARK] = ",".join(added)
+        if (added := slim.add(s)):
             say(f"env    {len(added)} slim switches (CLAUDE_CODE_DISABLE_ARTIFACT, _WORKFLOWS, ...)")
     for r in allow:
         s.setdefault("permissions", {}).setdefault("allow", []).append(r)
@@ -119,7 +110,7 @@ for src, dst in copies:
         say(f"copy   {dst}")
         if not dry:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_text(src.read_text().replace("LEAN_TOOLS", str(here / "tools")))
+            dst.write_text(src.read_text().replace("${CLAUDE_PLUGIN_ROOT}", str(here)))
 if un and (cdir / "agents/reader.md").exists() and "--reader" not in args:
     print(f"left   {cdir / 'agents/reader.md'} (pass --reader to remove it too)")
 

@@ -95,7 +95,7 @@ def session(arm, rep, model, budget):
     if arm == "handoff":   # project-level skill: user skills are not loaded under ISOLATE
         sk = d / ".claude" / "skills" / "handoff" / "SKILL.md"
         sk.parent.mkdir(parents=True)
-        sk.write_text((ROOT / "skills" / "handoff" / "SKILL.md").read_text().replace("LEAN_TOOLS", str(ROOT / "tools")))
+        sk.write_text((ROOT / "skills" / "handoff" / "SKILL.md").read_text().replace("${CLAUDE_PLUGIN_ROOT}", str(ROOT)))
     sid, out, spent, total = None, [], 0.0, 0.0
     base = ["--output-format", "json", "--model", model, "--allowedTools", TOOLS, *ISOLATE]
     for step, prompt in enumerate(STEPS, 1):

@@ -4,7 +4,7 @@
 
 ### Spend less on Claude Code. Keep the quality.
 
-Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. Measured against plain Claude Code with every task passing: **`claude-lean lite` costs 32-70% less**, and the default install costs 36% less on short tasks and 44% less on noisy builds. On a real setup, the first request of a fresh session drops by about a third.
+Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. On THOL's 17 real tasks (Sonnet 4.6) the default install costs **21% less** than plain Claude Code with every task passing. On our own evals **`claude-lean lite` costs 34-60% less**, and the default install costs 37% less on short tasks and 30% less on noisy builds, and writes a quarter fewer output tokens in long sessions. On a real setup, the first request of a fresh session drops by about a third.
 
 One command. Runs locally. Open source, no account, no telemetry.
 
@@ -23,32 +23,53 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 ## Results
 
-Same graded tasks, Haiku 5.5, clean Claude Code setup, every arm passed every task (2026-11-20, `evals/compare.py`):
+**[THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard)** (Token Harness Optimizer Leaderboard: 17 real tasks, Sonnet 4.6, 3 runs each, isolated sessions; our local run on Claude Code 2.1.239, 2026-11-20). Cost reduction vs plain Claude Code, geometric mean over tasks, every run passed:
 
-| Cost vs plain Claude Code | Short task | Long session (10 tasks) | Noisy build/test output |
+| | Short tasks (10) | Long tasks (7) | All 17 |
 |---|--:|--:|--:|
-| **`claude-lean lite`** | **-70%** | **-32%** | **-64%** |
-| **Claude Lean `init`** (slim + output filter) | **-36%** | +12% | **-44%** |
+| **Claude Lean `init`** | **+16.9%** | **+26.9%** | **+21.2%** |
 
-Two runs per cell; differences under ~10% are run-to-run noise, so read the long-session `init` result as "no saving".
+Per run vs plain: output tokens -25% (short) / -19% (long), cache reads -37% / -37%. Biggest wins: Django settings inventory -59%, ledger debugging -52%, PDF report -50%, migration -33%. The one task that cost more: open-ended web research, +7% (with a slightly higher score, 0.55 vs 0.50). For reference, the THOL board lists tokenade at +9.88% on short tasks from its own run (Claude Code 2.1.206); this is not an official board entry yet.
+
+Same graded tasks, Haiku 5.5, clean Claude Code setup, two runs per cell (2026-11-20, `evals/compare.py`, 238 tasks):
+
+| Cost vs plain Claude Code | Short task | Long session (10 tasks) | Noisy build/test output | Passed |
+|---|--:|--:|--:|--:|
+| **`claude-lean lite`** | **-57%** | **-34%** | **-60%** | 34/34 |
+| **Claude Lean `init`** (slim + output filter + output budget) | **-37%** | -2% | **-30%** | 34/34 |
+| [ponytail](https://github.com/DietrichGebert/ponytail) 5.3.3 | +7% | +5% | +29% | 33/34 |
+| [caveman](https://github.com/JuliusBrussee/caveman) v4.1.0 | +11% | +6% | +15% | 34/34 |
+
+Where the saving comes from, tokens vs plain Claude Code:
+
+| | Input, short | Output, short | Input, long | Output, long |
+|---|--:|--:|--:|--:|
+| `lite` | -71% | -15% | -50% | +2% |
+| `init` | -49% | -11% | -19% | **-25%** |
+| ponytail | 0% | +13% | +4% | +6% |
+| caveman | +4% | -33% | +10% | -27% |
+
+caveman cuts output as much as we do, but its own prompt costs more than that saves on these tasks. Differences under ~10% are run-to-run noise, so read the long-session `init` result as "no saving in cost". Each tool was installed the way its README says (both as Claude Code plugins). The output budget is a ~120-token rule set added at session start (`hooks/terse_hook.py`); without it, `init` measured -21% / +7% / -19% in the same run.
 
 **On a real setup** (the author's machine: many skills and plugins, a project with memory), the first request of a fresh session went from 46,018 to 29,179 tokens (-37%), and its cost on a warm cache from $0.0031 to $0.0004: without slim, part of the prompt start changes on every run and misses the cache. Check yours with `claude-lean report --compare`.
-
-**vs RTK and caveman**, same tasks, on a base where every arm already had slim on (an eval setup leak we found and fixed afterwards; it applies equally to all four arms):
-
-| Cost vs plain Claude Code + slim | Short task | Long session | Noisy output |
-|---|--:|--:|--:|
-| **`claude-lean lite`** | **-48%** | **-44%** | **-61%** |
-| [caveman](https://github.com/JuliusBrussee/caveman) v4.1.0 | +7% | -21% | -4% |
-| [RTK](https://github.com/rtk-ai/rtk) v1.2.1 | -1% | -14% | -14% |
-
-Each tool was installed the way its README says (RTK with its Claude Code hook and permission rules for the commands it rewrites, caveman as a plugin).
 
 > **Correction (0.2.3):** earlier versions said long sessions cost 65% less with a fresh session per task. That number came from a bug in our eval: a resumed Claude Code session reports its cost as a running total, and we added those totals up. Measured per step, one continuous session is *cheaper* when tasks run back to back (cached history is billed at a tenth of the input price). Details in [What we got wrong](#what-we-got-wrong).
 
 > **Note:** every number here comes from an eval in [`evals/`](https://github.com/JacobTheJacobs/claude-lean/tree/master/evals) that you can re-run yourself. When a result went against us, it's on this page too.
 
 ## Get started
+
+### 🧩 Claude Code plugin
+
+Inside Claude Code:
+
+```
+/plugin marketplace add JacobTheJacobs/claude-lean
+/plugin install lean@claude-lean
+/lean:slim on
+```
+
+The plugin brings the long-session guard, handoff notes, the cache guard, both skills and the `/lean:report`, `/lean:audit` and `/lean:memory` commands. Plugins can't set environment switches, so `/lean:slim on` writes the 6 slim settings to `~/.claude/settings.json` (backed up first; `/lean:slim off` undoes it). The output filter and `lite` need the npm install below. Use the plugin or `npx claude-lean init`, not both: the hooks would run twice.
 
 ### ⌨️ npm
 
@@ -70,6 +91,7 @@ Needs Python 3.8+ on macOS, Linux or WSL, plus Node 18+ for `npx`.
 
 | Agent | Command | What gets installed |
 |---|---|---|
+| Claude Code, plugin | `/plugin install lean@claude-lean` | 3 hooks, 2 skills, 4 `/lean:` commands. `/lean:slim on` adds the 6 settings. |
 | Claude Code | `npx claude-lean init` | 4 hooks, 2 skills and 6 settings in `~/.claude/settings.json` (backed up first) |
 | Claude Code, quick jobs | `npx claude-lean lite` | Nothing. Starts Claude Code with only the core tools. |
 

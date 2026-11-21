@@ -21,7 +21,7 @@ const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS
 
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions
 
-  claude-lean init [--dry-run] [--reader] [--no-filter] [--no-slim]
+  claude-lean init [--dry-run] [--reader] [--no-filter] [--no-slim] [--no-terse]
                                                           install hooks into ~/.claude (backup first, re-runnable)
   claude-lean uninstall [--reader]                        remove everything it added
   claude-lean report [--days N] [--project NAME]          where your tokens and dollars went
@@ -119,7 +119,7 @@ function main() {
       return run(needPython(), [installed("tools/squeeze.py"), "get", ...rest]);
     case "doctor": {
       const py = python();
-      const settings = path.join(process.env.CLAUDE_DIR || path.join(os.homedir(), ".claude"), "settings.json");
+      const settings = path.join(process.env.CLAUDE_DIR || process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude"), "settings.json");
       let hooked = false;
       try { hooked = fs.readFileSync(settings, "utf8").includes(HOME); } catch {}
       const rows = [
