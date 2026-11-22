@@ -20,7 +20,6 @@ import json
 import os
 import re
 import sys
-import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -31,7 +30,7 @@ CAP = int(os.environ.get("LEAN_WEB_SEARCHES", 15))
 OWN = os.environ.get("LEAN_WEB_SEARCH", "1") != "0"
 MARK = "[Claude Lean search]"
 BUDGET, MAX_HITS, MIN_HITS, BENCH = 8.0, 15, 3, 600
-STATE = os.path.join(tempfile.gettempdir(), "claude-lean-engines.json")
+STATE = os.path.join(os.path.expanduser("~"), ".cache", "claude-lean", "engines.json")   # per user, not shared /tmp
 
 STOP = set("a an and the of for to in on with by or vs site com org github open source opensource project projects "
            "repo repository tool tools library official llm llms ai 2023 2024 2025 2026 2027 best list".split())
@@ -234,6 +233,7 @@ def own_search(query, blocked_domains):
             bench[n] = now + BENCH
     pool.shutdown(wait=False)                  # (cancel_futures needs Python 3.9; the hook exits right after)
     try:
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
         with open(STATE, "w") as f:
             json.dump(bench, f)
     except OSError:

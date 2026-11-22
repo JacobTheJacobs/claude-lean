@@ -3,6 +3,8 @@
 ## [0.2.5] - 2026-11-22
 
 ### Changed
+- Web search engine state moved from shared /tmp to ~/.cache/claude-lean (a predictable /tmp file could be
+  pre-created by another user on a shared machine).
 - Short README (GitHub and npm): one THOL table with every tool; all benchmarks in docs/BENCHMARKS.md, every
   feature in docs/FEATURES.md. Claude Lean row updated to the full 0.2.4 run (+22.4% overall).
 
