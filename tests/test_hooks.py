@@ -251,6 +251,43 @@ class OtherHooks(unittest.TestCase):
             run(ROOT / "tools" / "audit.py", "", env, ("--unprofile", proj))
             self.assertEqual(json.loads(local.read_text()), {"permissions": {"deny": ["Bash(rm *)"]}})
 
+    def test_cache_expired_note(self):
+        import datetime as dt
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td) / "t.jsonl"
+            old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=2)).isoformat().replace("+00:00", "Z")
+            t.write_text(json.dumps({"type": "assistant", "timestamp": old, "message": {"usage": {
+                "input_tokens": 10, "cache_read_input_tokens": 80_000, "cache_creation_input_tokens": 0}}}) + "\n")
+            r = hook("session_guard.py", {"transcript_path": str(t), "session_id": "x", "prompt": "hi"},
+                     {"HOME": td, "ANTHROPIC_API_KEY": ""})
+            self.assertIn("cache has expired", r["systemMessage"])
+
+    def test_web_fetch_repeat(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td) / "t.jsonl"
+            t.write_text(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "f1",
+                "name": "WebFetch", "input": {"url": "https://a.org/x", "prompt": "list repos"}}]}}) + "\n")
+            ask = lambda prompt: hook("web_guard.py", {"tool_name": "WebFetch", "transcript_path": str(t),
+                                                       "tool_use_id": "f2",
+                                                       "tool_input": {"url": "https://a.org/x", "prompt": prompt}})
+            self.assertIn("already fetched", ask("list repos")["hookSpecificOutput"]["permissionDecisionReason"])
+            self.assertIsNone(ask("what license?"))
+
+    def test_loop_guard_edit(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td) / "t.jsonl"
+            rows = []
+            for i in range(2):
+                rows.append({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": f"e{i}",
+                             "name": "Edit", "input": {"file_path": "/x/a.py", "old_string": f"v{i}"}}]}})
+                rows.append({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": f"e{i}",
+                             "is_error": True, "content": "String to replace not found in file."}]}})
+            t.write_text("".join(json.dumps(r) + "\n" for r in rows))
+            r = hook("loop_guard.py", {"tool_name": "Edit", "transcript_path": str(t), "tool_use_id": "e9",
+                                       "tool_input": {"file_path": "/x/a.py"},
+                                       "error": "String to replace not found in file."})
+            self.assertIn("Read the exact current lines", r["hookSpecificOutput"]["additionalContext"])
+
     def test_loop_guard(self):
         with tempfile.TemporaryDirectory() as td:
             t = Path(td) / "t.jsonl"

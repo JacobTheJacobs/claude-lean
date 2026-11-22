@@ -3,6 +3,13 @@
 ## [0.2.4] - 2026-11-20
 
 ### Added
+- Expired-cache note (session_guard): returning to a long session after the cache TTL (1 h subscription, 5 min API
+  key; `LEAN_CACHE_TTL`) shows what the next message rewrites.
+- WebFetch: the same URL and question fetched again points at the earlier answer. Retry-loop note covers Edit.
+- `audit`: context added without asking (skill listings, invoked skills, hook output), hooks failing on every call,
+  verbose output styles. `memory`: counts CLAUDE.md `@imports`.
+- Rules: narrowest test first; filter background watchers to events you act on.
+- Plugin: MCP compaction hook was missing; added. `report`: Haiku 5.5 priced as Claude Code reports it ($5/$25).
 - `audit --profile [DIR]`: per-project `skillOverrides` off and `mcp__<server>__*` deny rules for skills and user MCP
   servers that project never used (`--unprofile` undoes it); `audit` shows each skill's size once it runs.
 - Cost status line (`tools/statusline.py`): cost, context fill, cache hit rate, 5-hour limit; only added when none.

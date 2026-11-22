@@ -20,7 +20,9 @@ AGENTS = ("- Do the reading yourself with Grep, Glob and Read; start a subagent 
           "GitHub topic page, registry or docs index) instead of running many narrow searches; never repeat a query you already ran.\n"
           "- Run independent reads, searches and commands together in one turn; every extra turn re-reads the whole context.\n"
           "- Browser and computer use: read the page text first; take a screenshot only to check layout.\n"
-          "- PDFs: when only the text matters, extract it (pdftotext or similar) and read that instead of the PDF.\n")
+          "- PDFs: when only the text matters, extract it (pdftotext or similar) and read that instead of the PDF.\n"
+          "- Tests: run the narrowest test that proves a change; run the full suite once at the end.\n"
+          "- Watching background work: filter to the events you will act on; every wake-up re-reads the whole context.\n")
 KEEP = "- Never trim correctness: keep needed validation and error handling, and keep code, commands, paths and errors exact."
 RULES = "Output budget (Claude Lean):\n" + OUTPUT + AGENTS + KEEP
 

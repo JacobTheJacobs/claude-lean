@@ -11,7 +11,9 @@ THOL's web-research task, ~45% of the run). So this hook avoids running it:
    Off-topic pages are dropped, and pages an earlier search already showed are listed only as a count.
 3. If that finds too little, the native WebSearch runs, up to LEAN_WEB_SEARCHES native searches a session (default
    15; 0 = no cap); past that Claude is told to WebFetch pages it already found, or finish.
-LEAN_WEB_SEARCH=0 turns step 2 off. Any hook error lets the native search run."""
+LEAN_WEB_SEARCH=0 turns step 2 off. Any hook error lets the native search run.
+WebFetch (same hook, matcher WebFetch): a fetch of the same URL with the same question as an earlier fetch in this
+session, with no compaction since, is answered with a pointer to that earlier result instead of fetching again."""
 import base64
 import html as htmlmod
 import json
@@ -257,8 +259,38 @@ def deny(reason):
                                              "permissionDecisionReason": reason}}))
 
 
+def repeat_fetch(d):
+    ti = d.get("tool_input") or {}
+    want = (ti.get("url"), ti.get("prompt"))
+    found = False
+    try:
+        with open(d.get("transcript_path") or "", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if "compact_boundary" in line or '"isCompactSummary":true' in line:
+                    found = False
+                    continue
+                if '"WebFetch"' not in line:
+                    continue
+                try:
+                    content = json.loads(line)["message"]["content"]
+                except (ValueError, KeyError, TypeError):
+                    continue
+                for b in content if isinstance(content, list) else []:
+                    if (isinstance(b, dict) and b.get("type") == "tool_use" and b.get("name") == "WebFetch"
+                            and b.get("id") != d.get("tool_use_id")
+                            and ((b.get("input") or {}).get("url"), (b.get("input") or {}).get("prompt")) == want):
+                        found = True
+    except OSError:
+        return
+    if found and want[0]:
+        deny(f"Claude Lean: you already fetched {want[0]} with this same question earlier in this session; that "
+             "answer is above. Fetch again only with a different question.")
+
+
 def main():
     d = json.load(sys.stdin)
+    if d.get("tool_name") == "WebFetch":
+        return repeat_fetch(d)
     ti = d.get("tool_input") or {}
     q = ti.get("query") or ""
     past, shown = history(d.get("transcript_path") or "")

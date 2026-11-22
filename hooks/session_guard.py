@@ -18,6 +18,25 @@ from pathlib import Path
 AT = int(os.environ.get("LEAN_CLEAR_AT", 100_000))
 EVERY = int(os.environ.get("LEAN_CLEAR_EVERY", 50_000))
 PASTE = int(os.environ.get("LEAN_PASTE_CHARS", 40_000))
+# Prompt cache lifetime: 1 hour on a Claude subscription, 5 minutes with an API key (Claude Code's defaults).
+TTL = int(os.environ.get("LEAN_CACHE_TTL") or (300 if os.environ.get("ANTHROPIC_API_KEY") else 3600))
+
+
+def idle_seconds(transcript: Path) -> float:
+    """Seconds since the last message in the transcript."""
+    import datetime as dt
+    size = transcript.stat().st_size
+    with transcript.open("rb") as f:
+        f.seek(max(0, size - 200_000))
+        lines = f.read().decode("utf-8", "replace").splitlines()
+    for line in reversed(lines):
+        if '"timestamp"' in line and '"assistant"' in line:
+            try:
+                ts = json.loads(line)["timestamp"].replace("Z", "+00:00")
+                return (dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(ts)).total_seconds()
+            except (ValueError, KeyError, TypeError):
+                continue
+    return 0
 
 
 def last_prompt_tokens(transcript: Path) -> int:
@@ -49,6 +68,14 @@ def main():
     if not t.is_file():
         return
     n = last_prompt_tokens(t)
+    idle = idle_seconds(t)
+    if n >= 30_000 and idle > TTL:
+        turns = 20 if TTL > 300 else 12           # a cache write costs 2x (1 h) or 1.25x (5 min) vs 0.1x for a read
+        print(json.dumps({"systemMessage": f"Claude Lean: {idle / 60:.0f} min since the last reply, so the prompt "
+                          f"cache has expired. This message writes the whole ~{n // 1000}K-token conversation to cache "
+                          f"again (about as much as {turns} normal turns). Coming back to something different? Say "
+                          "\"handoff\", then /clear: a short note costs far less."}))
+        return
     if n < AT:
         return
     mark = Path.home() / ".cache" / "claude-lean" / f"guard-{d.get('session_id', 'x')}"

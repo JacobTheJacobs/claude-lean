@@ -33,11 +33,11 @@ hooks = {"UserPromptSubmit": [("", py("hooks/session_guard.py"))],
          "SessionStart": [("", py("hooks/handoff_hook.py"))],
          # output budget: a few standing rules so Claude writes less (output costs several times input)
          "PreToolUse": [("Edit|Write|MultiEdit", py("hooks/cache_guard.py")),
-                        ("WebSearch", py("hooks/web_guard.py")),    # web search budget: ~$0.07 per search
+                        ("WebSearch|WebFetch", py("hooks/web_guard.py")),    # web search budget: ~$0.07 per search
                         ("Read", py("hooks/read_guard.py"))],       # large-file read: ask for a range first
          "PostToolUse": [("Read", py("hooks/read_guard.py")),       # identical re-read -> one-line note
                          ("mcp__.*", py("hooks/mcp_compact.py"))],  # MCP JSON: drop nulls/empties, minify
-         "PostToolUseFailure": [("Bash", py("hooks/loop_guard.py"))],  # same failure 3x -> change approach
+         "PostToolUseFailure": [("Bash|Edit|MultiEdit", py("hooks/loop_guard.py"))],  # same failure 3x -> change approach
          "PreCompact": [("", py("hooks/compact_hook.py"))]}         # what the compaction summary keeps
 # --no-terse keeps only the no-subagent-fan-out rule (slim alone made Claude fan out to 9-10 subagents)
 hooks["SessionStart"].append(("startup|clear|compact", ("LEAN_TERSE=0 " if "--no-terse" in args else "") + py("hooks/terse_hook.py")))

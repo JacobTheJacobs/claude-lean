@@ -95,6 +95,38 @@ def usage(days, folder=None):
     return skills, mcp, sessions, oldest
 
 
+INJECTED = ("hook_success", "hook_additional_context", "skill_listing", "deferred_tools_delta", "agent_listing_delta",
+            "invoked_skills", "mcp_instructions_delta")
+
+
+def injected(days):
+    """Context added without you asking, from session logs: hook output, skill and tool listings, invoked skills.
+    Also counts hooks that fail on every call (they add latency to every tool call)."""
+    since = time.time() - days * 86400
+    size, fails, sessions = collections.Counter(), collections.Counter(), 0
+    for f in PROJECTS.glob("*/*.jsonl"):
+        if f.stat().st_mtime < since:
+            continue
+        sessions += 1
+        with f.open(errors="replace") as fh:
+            for line in fh:
+                if '"attachment"' not in line:
+                    continue
+                try:
+                    a = json.loads(line).get("attachment") or {}
+                except ValueError:
+                    continue
+                t = a.get("type", "")
+                if t == "hook_non_blocking_error":
+                    fails[(a.get("hookEvent", "?"), (a.get("stderr") or "")[:70])] += 1
+                elif t in INJECTED:
+                    who = t
+                    if t.startswith("hook"):
+                        who = f"hook {a.get('hookName') or a.get('hookEvent')}: {str(a.get('command', ''))[-50:]}"
+                    size[who] += len(json.dumps(a.get("content") or a.get("stdout") or a)) // 4
+    return size, fails, sessions
+
+
 def mcp_servers():
     out = {}
     try:
@@ -241,6 +273,23 @@ def main():
         if idle:
             print("\nRemove an unused MCP server: claude mcp remove <name> (-s user for user scope). "
                   "claude.ai connectors are switched off in claude.ai settings.")
+
+    size, fails, n = injected(a.days)
+    if size:
+        print(f"\nAdded to the context without you asking ({n} sessions; tokens per session, each re-read every later turn)")
+        for k, v in size.most_common(8):
+            print(f"{v // max(n, 1):>7}  {k}")
+    if fails:
+        print("\nHooks that keep failing (each failure adds a delay to that event; fix or remove them in settings.json)")
+        for (ev, err), c in fails.most_common(5):
+            print(f"{c:>7}x  {ev}: {err}")
+    try:
+        style = json.loads((CLAUDE / "settings.json").read_text()).get("outputStyle")
+    except (OSError, ValueError):
+        style = None
+    if style and style.lower() not in ("default", ""):
+        print(f"\nOutput style \"{style}\" is on: its instructions ride in every request, and explanatory or learning "
+              "styles write longer answers (output costs 5x input). /output-style default turns it off.")
 
     if a.disable_unused:
         if not unused:

@@ -41,7 +41,7 @@
         ]
       },
       {
-        "matcher": "WebSearch",
+        "matcher": "WebSearch|WebFetch",
         "hooks": [
           {
             "type": "command",
@@ -68,11 +68,20 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/read_guard.py\""
           }
         ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/mcp_compact.py\""
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",

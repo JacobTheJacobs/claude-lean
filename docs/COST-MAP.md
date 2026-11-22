@@ -119,6 +119,16 @@ uncached input per run.
 | M6 | Conversation growth | Grep in content mode returning thousands of lines | MISSING | check whether Claude Code already caps it (VERIFY) |
 | M7 | Web | Compact Claude Code's own search results when it falls back | MISSING | small: the search's cost is already paid |
 | K2 | CI | Cost settings for CI (`--max-turns`, narrow tools, lite) | DONE (README) | |
+| N1 | Cache | Note when you return after the cache expired, or resume a long session | DONE | 1 h subscription, 5 min API key |
+| N2 | Turns | Background watchers wake Claude per event (each wake re-reads everything) | DONE (rule) | |
+| N3 | Turns | Failing edits in a loop | DONE (retry-loop note covers Edit) | |
+| N4 | Web | Same page fetched twice | DONE | |
+| N5 | Turns | Full test suite on every change | DONE (rule) | |
+| N6 | Fixed prompt | Context added without asking (listings, invoked skills, hook output) | DONE (`audit`) | author: skill listing ~10K and invoked skills ~10K tokens per session |
+| N7 | Output | Verbose output styles | DONE (`audit`) | |
+| N8 | Fixed prompt | CLAUDE.md `@imports` | DONE (`memory`) | |
+| N9 | Setup | Hooks that fail on every call | DONE (`audit`) | author: ~41,000 failures in 3 days from one broken hook |
+| G6 | Web | Google results through a stealth headless browser (Obscura) | DROPPED | Claude Code's safety check blocked testing it as unauthorized access; it works by getting past Google's bot protection |
 
 ---
 
@@ -366,6 +376,10 @@ long and noisy tasks, and THOL for long and web tasks. A result that goes agains
 - **MCP compaction** first dropped empty lists, but `"items": []` means "nothing found". It now keeps top-level fields
   and empty lists, and drops only nested null and "" values.
 - **Python 3.8** (the minimum we support): `web_guard` used a 3.9-only argument; fixed.
+- **Haiku 5.5 price:** `report` priced Haiku 5.5 at $0.10 / $0.50 per million tokens; Claude Code's own cost figures
+  on THOL match $5 / $25. A Haiku development run of THOL cost more per run than Sonnet 4.6, so it was stopped after
+  11 runs. Sonnet 4.6 stays the measuring model.
+- **The plugin** was missing the MCP compaction hook; added.
 
 ---
 

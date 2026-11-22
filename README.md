@@ -135,6 +135,9 @@ Claude Lean shrinks the parts that don't need to be there:
 - **Audit.** `npx claude-lean audit` finds skills and MCP servers you load on every request but never use, and shows how much each skill adds to the context once it runs. `audit --profile` turns off, for one project only, the personal skills and user MCP servers that project never used (`--unprofile` undoes it).
 - **Status line.** Session cost, context fill, cache hit rate and your 5-hour limit, as you work. Added only when you have no status line of your own (`--no-statusline` to skip).
 - **Pasted prompts.** A prompt over ~10K tokens gets a one-line note to you: save big logs to a file and let Claude search them.
+- **Expired cache.** Coming back after the prompt cache expired (1 hour on a subscription, 5 minutes with an API key) to a long session, you get a one-line note: this message rewrites the whole cache, so a handoff and `/clear` may be cheaper.
+- **Repeated fetches.** Fetching the same page with the same question twice in a session points Claude at the earlier answer. Failing edits get the retry-loop note too.
+- **Hidden context and broken hooks.** `audit` shows what gets added to your context without you asking (skill listings, invoked skills, hook output), hooks that fail on every call, and a verbose output style. `memory` counts files your CLAUDE.md pulls in with `@imports`.
 - **Memory check.** `npx claude-lean memory` shows what your memory files and CLAUDE.md add to every request.
 - **Where the money went.** `npx claude-lean report` now also estimates what each tool's results cost while they sat in the context, and shows fast-mode spend.
 

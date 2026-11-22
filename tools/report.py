@@ -26,8 +26,10 @@ RATES = {
     "fable-5-1": (10.00, 50.00, 0.25, 12.50, 20.00),
     "opus-5-5": (4.00, 20.00, 0.20, 5.00, 8.00),
     "sonnet-5-5": (2.00, 10.00, 0.10, 2.50, 4.00),
-    "haiku-5-5": (0.10, 0.50, 0.01, 0.125, 0.20),
-    "haiku-5-5-long": (0.50, 2.50, 0.05, 0.625, 1.00),  # whole request, prompt over 100K tokens
+    # Claude Code's own cost figures for Haiku 5.5 (THOL runs, 2026-11-22) match $5 / $25 per million tokens,
+    # not the $0.10 / $0.50 this table had; check your Console bill if it matters.
+    "haiku-5-5": (5.00, 25.00, 0.50, 6.25, 10.00),
+    "haiku-5-5-long": (5.00, 25.00, 0.50, 6.25, 10.00),
     "opus": (5.00, 25.00, 0.50, 6.25, 10.00),  # older Opus 4.x / 5
     "sonnet": (3.00, 15.00, 0.30, 3.75, 6.00),  # older Sonnet 4.x
     "haiku": (1.00, 5.00, 0.10, 1.25, 2.00),  # Haiku 4.5
