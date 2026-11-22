@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6] - 2026-11-23
+
+### Changed
+- Web search hook sends an honest client name by default; browser headers only with `LEAN_WEB_BROWSER=1`. With the
+  honest name only GitHub's API answers from most machines, so general searches fall back to Claude Code's own search
+  (still capped at 15). 0.2.0-0.2.5 were removed from npm on 2026-11-22, likely by npm's automated scan.
+
 ## [0.2.5] - 2026-11-22
 
 ### Changed

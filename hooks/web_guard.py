@@ -36,11 +36,14 @@ STOP = set("a an and the of for to in on with by or vs site com org github open 
            "repo repository tool tools library official llm llms ai 2023 2024 2025 2026 2027 best list".split())
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-HEADERS = {"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9",
+# Honest client by default. LEAN_WEB_BROWSER=1 sends a desktop browser's headers instead, which some engines need.
+HONEST = {"User-Agent": "claude-lean (+https://github.com/JacobTheJacobs/claude-lean)", "Accept-Language": "en-US,en;q=0.9"}
+BROWSER = {"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9",
            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
            "Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-User": "?1", "Sec-Fetch-Dest": "document",
            "Upgrade-Insecure-Requests": "1", "sec-ch-ua": '"Chromium";v="131", "Not_A Brand";v="24"',
            "sec-ch-ua-mobile": "?0", "sec-ch-ua-platform": '"Windows"'}
+HEADERS = BROWSER if os.environ.get("LEAN_WEB_BROWSER") == "1" else HONEST
 
 
 # ---------- repeats and the native-search count, from the transcript ----------

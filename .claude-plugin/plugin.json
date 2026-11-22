@@ -1,7 +1,7 @@
 {
   "name": "lean",
   "displayName": "Claude Lean",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Make Claude Code cheaper without losing quality: output budget, web search and read guards, MCP compaction, slim prompt (/lean:slim), cost report and audit. 22% less on THOL tasks, every task passing. Local, no telemetry.",
   "author": {
     "name": "JacobTheJacobs",
