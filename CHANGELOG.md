@@ -37,8 +37,8 @@
 - No-subagent rule in the output budget: "do the reading yourself with Grep, Glob and Read". Slim alone made Claude start
   9-10 Explore subagents on reading tasks (THOL Django questions +109%); with the rule, 0 of 3 runs fanned out and the task
   costs 9% less than plain. Kept under `--no-terse` / `LEAN_TERSE=0`.
-- THOL (Sonnet 4.6, 17 tasks, 3 runs each, Claude Code 2.1.239): +16.9% short, +26.9% long, +21.2% overall cost
-  reduction vs plain; every run passed.
+- THOL (Sonnet 4.6, 17 tasks, 3 runs each, Claude Code 2.1.239): +12.5% short, +34.7% heavy, +22.4% overall cost
+  reduction vs plain (tokenade's board figures: +9.9% / +38.9% / +23.2%); every run passed.
 - Claude Code plugin: `/plugin marketplace add JacobTheJacobs/claude-lean`, then `/plugin install lean@claude-lean`.
   Long-session guard, handoff, cache guard, both skills, and `/lean:slim`, `/lean:report`, `/lean:audit`,
   `/lean:memory`. The output filter stays npm-only (its rewritten command needs a permission rule a plugin can't add).

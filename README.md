@@ -4,7 +4,7 @@
 
 ### Spend less on Claude Code. Keep the quality.
 
-Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. On THOL's 17 real tasks (Sonnet 4.6) the default install costs **21% less** than plain Claude Code with every task passing. On our own evals **`claude-lean lite` costs 34-60% less**, and the default install costs 37% less on short tasks and 30% less on noisy builds, and writes a quarter fewer output tokens in long sessions. On a real setup, the first request of a fresh session drops by about a third.
+Every Claude Code request carries a fixed load before your prompt: the system prompt and every tool definition, ~17-50K tokens. Claude Lean cuts it. On THOL's 17 real tasks (Sonnet 4.6) the default install costs **22% less** than plain Claude Code, and **35% less on the heavy tasks**, with every task passing. On our own evals **`claude-lean lite` costs 34-60% less**, and the default install costs 37% less on short tasks and 30% less on noisy builds, and writes a quarter fewer output tokens in long sessions. On a real setup, the first request of a fresh session drops by about a third.
 
 One command. Runs locally. Open source, no account, no telemetry.
 
@@ -23,13 +23,14 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 ## Results
 
-**[THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard)** (Token Harness Optimizer Leaderboard: 17 real tasks, Sonnet 4.6, 3 runs each, isolated sessions; our local run on Claude Code 2.1.239, 2026-11-20). Cost reduction vs plain Claude Code, geometric mean over tasks, every run passed:
+**[THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard)** (Token Harness Optimizer Leaderboard: 17 real tasks, Sonnet 4.6, 3 runs each, isolated sessions; our local runs on Claude Code 2.1.239, 2026-11-22). Cost reduction vs plain Claude Code, geometric mean over tasks, every run passed:
 
-| | Short tasks (10) | Long tasks (7) | All 17 |
+| | Short tasks (10) | Heavy tasks (7, the board's headline) | All 17 |
 |---|--:|--:|--:|
-| **Claude Lean `init`** | **+16.9%** | **+26.9%** | **+21.2%** |
+| **Claude Lean `init`** (0.2.4) | **+12.5%** | **+34.7%** | **+22.4%** |
+| tokenade 0.8.13 (THOL board, its own run on Claude Code 2.1.206) | +9.9% | +38.9% | +23.2% |
 
-Per run vs plain: output tokens -25% (short) / -19% (long), cache reads -37% / -37%. Biggest wins: Django settings inventory -59%, ledger debugging -52%, PDF report -50%, migration -33%. The one task that cost more: open-ended web research, +7% (with a slightly higher score, 0.55 vs 0.50). For reference, the THOL board lists tokenade at +9.88% on short tasks from its own run (Claude Code 2.1.206); this is not an official board entry yet.
+Per run vs plain: output tokens -18%, cache reads -32%. Biggest wins: Django settings inventory -59%, ledger debugging -49%, PDF report -49%, web research -46% ($3.13 → $1.70, same score). Tasks that cost more: Django code questions +10% and seo audit +5%, both inside run-to-run noise (one expensive run each). An earlier build without the web search hook scored +16.9% / +26.9% / +21.2%. These are our local runs, not an official board entry yet.
 
 Same graded tasks, Haiku 5.5, clean Claude Code setup, two runs per cell (2026-11-20, `evals/compare.py`, 238 tasks):
 
