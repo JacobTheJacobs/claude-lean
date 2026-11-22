@@ -32,7 +32,7 @@ One command. Runs locally. Open source, no account, no telemetry.
 
 Per run vs plain: output tokens -18%, cache reads -32%. Biggest wins: Django settings inventory -59%, ledger debugging -49%, PDF report -49%, web research -46% ($3.13 → $1.70, same score). Tasks that cost more: Django code questions +10% and seo audit +5%, both inside run-to-run noise (one expensive run each). An earlier build without the web search hook scored +16.9% / +26.9% / +21.2%. These are our local runs, not an official board entry yet.
 
-Same graded tasks, Haiku 5.5, clean Claude Code setup, two runs per cell (2026-11-20, `evals/compare.py`, 238 tasks):
+Our own evals: same graded tasks, Haiku 5.5, clean Claude Code setup, two runs per cell (2026-11-20, `evals/compare.py`, 238 tasks; measured before the web, read and MCP hooks were added, which the THOL run above includes):
 
 | Cost vs plain Claude Code | Short task | Long session (10 tasks) | Noisy build/test output | Passed |
 |---|--:|--:|--:|--:|
@@ -158,7 +158,7 @@ Every lever we know of, what Claude Lean covers and what it doesn't yet: [docs/C
 Running Claude Code in GitHub Actions? Add Claude Lean before the step that starts it:
 
 ```yaml
-- uses: JacobTheJacobs/claude-lean@v0.2.2
+- uses: JacobTheJacobs/claude-lean@master
   # with:
   #   filter: "false"   # keep raw command output
   #   slim: "false"     # keep every Claude Code feature
@@ -212,7 +212,9 @@ Each session stops at `--budget` dollars (default $2), so a re-run can't surpris
 
 ### vs JFrog Boost
 
-Same graded tasks, same machine, Haiku 5.5. JFrog Boost v0.17.5 was installed with `boost init --claude` in a separate HOME (2026-11-19, `evals/vs.py`). Every run is counted:
+> **Old result (Claude Lean 0.2.2, 2026-11-19).** This compared an earlier build whose main idea, a fresh session per task, turned out to cost more (see [What we got wrong](#what-we-got-wrong)); that approach is gone. Current numbers are in [Results](#results) and the THOL table there. A re-run against JFrog Boost with 0.2.4 is pending.
+
+Same graded tasks, same machine, Haiku 5.5. JFrog Boost v0.17.5 was installed with `boost init --claude` in a separate HOME (`evals/vs.py`). Every run is counted:
 
 | 10 tasks in a row | Passed | Cost per session |
 |---|:-:|--:|
@@ -279,6 +281,8 @@ The fix is in `evals/run.py` (`step_usd`), every saved result keeps the original
 ## FAQ
 
 **Why is my bill high when Claude writes so little code?** Each request re-reads the whole context. A 300K-token session re-read 50 times is 15 million tokens, mostly at the cached rate, plus a full-price cache write every time the prompt start changes.
+
+**Does it lower quality?** Not in what we measured. On THOL every one of the 51 Claude Lean runs passed, with the same or a higher score than plain Claude Code (web research: 0.50 vs 0.50). Every hook that changes what Claude sees has an off switch, listed under [Capabilities](#capabilities).
 
 **Does it help short tasks?** Yes. The long-session guard stays out of the way there, but slim (-32%) and `lite` (-74%) cut the fixed overhead every request carries.
 
