@@ -1,6 +1,6 @@
 {
   "name": "claude-lean",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Cut the fixed token overhead Claude Code sends with every request: short tasks 37-74% cheaper, same pass rate. Local hooks: output budget, output filter, long-session guard, cache guard, daily cap, usage report. Open source, no telemetry.",
   "bin": {
     "claude-lean": "bin/cli.js"

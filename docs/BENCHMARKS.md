@@ -8,7 +8,7 @@ harness, and can be re-run.
 
 | Tool (version) | Short tasks (10) | Heavy tasks (7) | All 17 | Runs passed |
 |---|--:|--:|--:|--:|
-| **Claude Lean** (0.2.4) * | **+12.5%** | **+34.7%** | **+22.4%** | 51/51 |
+| **Claude Lean** (0.2.5) * | **+12.5%** | **+34.7%** | **+22.4%** | 51/51 |
 | tokenade (0.8.13) | +9.9% | +38.9% | +23.2% | 170/170 |
 | claude-token-efficient (b32fa8b) | -0.3% | +11.6% | +4.8% | 170/170 |
 | ponytail (main) | +4.7% | +3.5% | +4.2% | 170/170 |
