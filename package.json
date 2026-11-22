@@ -1,7 +1,7 @@
 {
   "name": "claude-lean",
   "version": "0.2.5",
-  "description": "Cut the fixed token overhead Claude Code sends with every request: short tasks 37-74% cheaper, same pass rate. Local hooks: output budget, output filter, long-session guard, cache guard, daily cap, usage report. Open source, no telemetry.",
+  "description": "Make Claude Code cheaper without losing quality: 22% less on the THOL leaderboard tasks (35% on heavy ones), every task passing. Slim prompt, output budget, web search and read guards, MCP compaction, cost report. Open source, no telemetry.",
   "bin": {
     "claude-lean": "bin/cli.js"
   },
@@ -32,11 +32,17 @@
     "claude-code",
     "anthropic",
     "llm",
+    "ai",
     "tokens",
+    "token-optimization",
     "cost",
+    "prompt-caching",
+    "context",
     "hooks",
+    "mcp",
     "agents",
-    "context"
+    "claude-code-plugin",
+    "developer-tools"
   ],
   "repository": {
     "type": "git",

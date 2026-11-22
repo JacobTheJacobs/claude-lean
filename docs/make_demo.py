@@ -127,8 +127,8 @@ class Movie:
 def main():
     init, trim = capture()
     m = Movie()
-    m.card("Claude Lean", ["Short Claude Code tasks cost 37-74% less, same pass rate.",
-                           "Free. Local. Open source. No telemetry."], 2400)
+    m.card("Claude Lean", ["22% cheaper than plain Claude Code on the THOL leaderboard tasks,",
+                           "35% on the heavy ones. Every task passing. Open source, no telemetry."], 2600)
     t = "~/shop: bash"
     L = m.typed([], "npx claude-lean init", t)
     m.out(L, init, t, ms=60, hold=2200)
@@ -147,8 +147,18 @@ def main():
               "  plain Claude Code   17,243",
               "  claude-lean lite     5,442   (-68%)"], t, ms=250, hold=3000)
 
-    m.card("$0.0081  ->  $0.0021", ["One short task on Haiku 5.5 with claude-lean lite: 74% cheaper, 15/15 passed in both.",
-                                    "npx claude-lean init"], 3400)
+    t = "Claude Code: WebSearch"
+    L = m.typed([], 'WebSearch("kv cache compression github")', t)
+    import sys
+    sys.path.insert(0, str(ROOT / "hooks"))
+    import web_guard
+    hits = web_guard.own_search("kv cache compression github", [])[:5]
+    m.out(L, ["", "  served by the Claude Lean hook: no paid search request"] +
+          [f"  {i}. {h[0][:70]}" for i, h in enumerate(hits, 1)] +
+          ["", "  THOL web research: $3.13 -> $1.70 per run, same score"], t, ms=200, hold=3200)
+
+    m.card("THOL: cost vs plain Claude Code", ["Claude Lean +22.4%   tokenade +23.2%   claude-token-efficient +4.8%",
+                                               "ponytail +4.2%   caveman +1.9%   rtk -5.2%      npx claude-lean init"], 3800)
     m.save(ROOT / "docs" / "demo.gif")
     print(f"{len(m.frames)} frames, {sum(m.durs) / 1000:.1f}s")
 
