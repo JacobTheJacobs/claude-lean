@@ -345,6 +345,8 @@ has been paid about 31 times over, at 0.1x per read. Cutting a result early save
 | Prompt rule alone to limit web searches | -6% (Claude only partly follows it) | 3/3 |
 | Scraping search engines with a plain user-agent | blocked, or decoy results | — |
 | Google results page, Custom Search API | needs JavaScript; API closed to new users | — |
+| Slim turning off git instructions (2.4K tokens a request) | lost SWE-bench django-13297 0/6 vs 6/6 | removed from slim |
+| Context as images ([pxpipe](https://github.com/teamchong/pxpipe), not tested by us) | their claim: -59-70% on Fable 5 and Gemini; Sonnet/Opus 5.5 read 0-3/15 exact IDs from the images | not adopted: silent wrong reads |
 
 ---
 

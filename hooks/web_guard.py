@@ -11,8 +11,8 @@ THOL's web-research task, ~45% of the run). So this hook avoids running it:
    Off-topic pages are dropped, and pages an earlier search already showed are listed only as a count.
 3. If that finds too little, the native WebSearch runs, up to LEAN_WEB_SEARCHES native searches a session (default
    15; 0 = no cap); past that Claude is told to WebFetch pages it already found, or finish.
-   LEAN_WEB_AGY=1 adds Google's Antigravity CLI (`agy`, your own Google login) as a first source: Google-quality
-   results, 18-50 s per search, on your Antigravity quota; it waits up to LEAN_WEB_AGY_S seconds (default 60).
+   When `agy` is installed, the hook adds Google's Antigravity CLI (`agy`, your own Google login) as a first source: Google-quality
+   results, 18-50 s per search, on your Antigravity quota; it waits up to LEAN_WEB_AGY_S seconds (default 45). LEAN_WEB_AGY=0 turns it off.
 LEAN_WEB_SEARCH=0 turns step 2 off. Any hook error lets the native search run.
 WebFetch (same hook, matcher WebFetch): a fetch of the same URL with the same question as an earlier fetch in this
 session, with no compaction since, is answered with a pointer to that earlier result instead of fetching again."""
@@ -199,8 +199,8 @@ ENGINES = {  # name: (url template, cookie, parser); GitHub is its official API,
 }
 
 
-AGY = os.environ.get("LEAN_WEB_AGY") == "1" and shutil.which("agy")
-AGY_S = float(os.environ.get("LEAN_WEB_AGY_S", 60))
+AGY = os.environ.get("LEAN_WEB_AGY") != "0" and shutil.which("agy")      # on whenever agy is installed
+AGY_S = float(os.environ.get("LEAN_WEB_AGY_S", 45))   # whole hook stays under the 60 s hook timeout
 AGY_LINE = re.compile(r"^\s*(?:[-*\d.)]+\s*)?(.+?)\s+[-\u2013|]\s+(https?://\S+?)[)>.,]*\s*$")
 
 
