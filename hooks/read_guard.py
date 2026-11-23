@@ -44,6 +44,24 @@ def same_range(a, b):
 WHOLE = re.compile(r"^\s*(?:cat|less|more)\s+(\"[^\"]+\"|'[^']+'|[^\s|;&<>$`*?]+)\s*$")
 
 
+DEF = re.compile(r"^(?:\s{0,4}(?:export\s+|pub(?:\(\w+\))?\s+|public\s+|private\s+|protected\s+|static\s+|async\s+|default\s+)*"
+                 r"(?:def|class|function|func|fn|interface|type|struct|enum|impl|trait|module|const\s+\w+\s*=\s*(?:async\s*)?\()"
+                 r")\b")
+HEADING = re.compile(r"^#{1,3} ")
+
+
+def outline(path, limit=40):
+    """Definition and heading lines with their line numbers, so Claude can Read just the range it needs."""
+    out, pat = [], HEADING if path.lower().endswith((".md", ".mdx", ".rst", ".txt")) else DEF
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for i, line in enumerate(f, 1):
+            if len(line) < 300 and pat.match(line):
+                out.append(f"{i}: {line.strip()[:120]}")
+                if len(out) > limit:
+                    return out[:limit] + ["..."]
+    return out
+
+
 def pre(d):
     ti = d.get("tool_input") or {}
     path = ti.get("file_path") or ""
@@ -67,10 +85,12 @@ def pre(d):
         if path in line and "is_error" in line:
             return                            # already warned about this file: let the full read through
     tokens = (size + 8 * n) // 4     # Read adds a line-number column
+    toc = outline(path) if n > 1 else []
+    toc = ("\nOutline (line: definition):\n" + "\n".join(toc)) if len(toc) >= 3 else ""
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
         "permissionDecisionReason": f"{MARK} {path} has {n:,} lines and {size:,} bytes (~{tokens:,} tokens), and a full read stays in "
         "the context for the rest of the session. If you need part of it, Grep for what you want or Read with "
-        "offset/limit (or head/tail/sed -n in Bash). If you really need all of it, repeat this exact call and it will go through."}}))
+        "offset/limit (or head/tail/sed -n in Bash). If you really need all of it, repeat this exact call and it will go through." + toc}}))
 
 
 def post(d):

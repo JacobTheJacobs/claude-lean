@@ -222,6 +222,12 @@ class OtherHooks(unittest.TestCase):
             self.assertEqual(bash("cat big.log")["hookSpecificOutput"]["permissionDecision"], "deny")
             self.assertFalse(bash("cat big.log | grep x"))      # piped: output is already narrowed
             self.assertFalse(bash("tail -50 big.log"))          # ranged
+            src = Path(td) / "m.py"
+            src.write_text("# comment\n" + "".join(f"def f{i}():\n" + "    pass\n" * 300 for i in range(4)))
+            why = hook("read_guard.py", {"hook_event_name": "PreToolUse", "transcript_path": "",
+                                         "tool_input": {"file_path": str(src)}})["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("2: def f0():", why)                   # outline with line numbers
+            self.assertNotIn("comment", why)
 
     def test_paste_note(self):
         r = hook("session_guard.py", {"prompt": "x" * 50_000})
