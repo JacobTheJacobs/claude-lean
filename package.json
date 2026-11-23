@@ -1,6 +1,6 @@
 {
   "name": "claude-lean",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Make Claude Code cheaper without losing quality: 22% less on the THOL leaderboard tasks (35% on heavy ones), every task passing. Slim prompt, output budget, web search and read guards, MCP compaction, cost report. Open source, no telemetry.",
   "bin": {
     "claude-lean": "bin/cli.js"

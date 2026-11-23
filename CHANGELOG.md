@@ -1,13 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.7] - 2026-11-23
 
 ### Fixed
 - Slim no longer turns off Claude Code's git instructions. With them off, Claude failed SWE-bench django-13297 0/6
   (same wrong fix, then edited the existing test to match); with them on it solved it 6/6. Costs 2.4K tokens per request.
   Run `init` again (or `slim on`) to update.
 - `lite` now really sets the slim switches (it set them without the `CLAUDE_CODE_DISABLE_` prefix, so they did nothing).
-- Web search uses Google through `agy` by default when it's installed (`LEAN_WEB_AGY=0` to turn off); waits up to 45 s.
+- `LEAN_WEB_AGY=1`: web search adds Google results through `agy` (opt-in; waits up to 45 s).
 - Output budget: one rule against editing existing tests to make a change pass.
 
 ## [0.2.6] - 2026-11-23
