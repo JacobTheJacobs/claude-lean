@@ -11,6 +11,8 @@ THOL's web-research task, ~45% of the run). So this hook avoids running it:
    Off-topic pages are dropped, and pages an earlier search already showed are listed only as a count.
 3. If that finds too little, the native WebSearch runs, up to LEAN_WEB_SEARCHES native searches a session (default
    15; 0 = no cap); past that Claude is told to WebFetch pages it already found, or finish.
+   LEAN_WEB_AGY=1 adds Google's Antigravity CLI (`agy`, your own Google login) as a first source: Google-quality
+   results, 18-50 s per search, on your Antigravity quota; it waits up to LEAN_WEB_AGY_S seconds (default 60).
 LEAN_WEB_SEARCH=0 turns step 2 off. Any hook error lets the native search run.
 WebFetch (same hook, matcher WebFetch): a fetch of the same URL with the same question as an earlier fetch in this
 session, with no compaction since, is answered with a pointer to that earlier result instead of fetching again."""
@@ -19,6 +21,9 @@ import html as htmlmod
 import json
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 import sys
 import time
 import urllib.parse
@@ -194,6 +199,23 @@ ENGINES = {  # name: (url template, cookie, parser); GitHub is its official API,
 }
 
 
+AGY = os.environ.get("LEAN_WEB_AGY") == "1" and shutil.which("agy")
+AGY_S = float(os.environ.get("LEAN_WEB_AGY_S", 60))
+AGY_LINE = re.compile(r"^\s*(?:[-*\d.)]+\s*)?(.+?)\s+[-\u2013|]\s+(https?://\S+?)[)>.,]*\s*$")
+
+
+def agy(query, needles):
+    """Google results through the Antigravity CLI, in plan mode (no shell, no file edits)."""
+    p = subprocess.run([AGY, "-p", "Use only your built-in web search tool (no shell commands, no files) to search: "
+                        f"{query}. Reply with only the top 8 results as 'title - URL' lines.",
+                        "--mode", "plan", "--print-timeout", f"{int(AGY_S)}s"],
+                       capture_output=True, text=True, timeout=AGY_S + 5, cwd=tempfile.gettempdir())   # not ~: agy indexes its workspace
+    hits = [(m.group(1).strip(), m.group(2), "") for m in map(AGY_LINE.match, p.stdout.splitlines()) if m]
+    if len(hits) < MIN_HITS:
+        raise ValueError(f"agy: {len(hits)} hits")
+    return hits
+
+
 def on_topic(hit, needles):
     hay = " ".join(hit).lower()
     return sum(n in hay for n in needles) >= min(2, len(needles))
@@ -223,11 +245,17 @@ def own_search(query, blocked_domains):
     now = time.time()
     names = [n for n in ENGINES if bench.get(n, 0) < now and (n != "github" or CODEY.search(query))]
     needles = [w[:6] for w in words(query) if len(w) >= 4]
-    if not names:
+    use_agy = AGY and bench.get("agy", 0) < now
+    if not names and not use_agy:
         return []
-    pool = ThreadPoolExecutor(len(names))
-    futs = {pool.submit(run_engine, n, query, needles): n for n in names}
+    pool = ThreadPoolExecutor(len(names) + 1)
+    futs = {}
+    if use_agy:                                # first in the dict: its hits lead the merge
+        futs[pool.submit(agy, query, needles)] = "agy"
+    futs.update({pool.submit(run_engine, n, query, needles): n for n in names})
     done, _ = wait(futs, timeout=BUDGET)
+    if use_agy and not any(futs[f] == "agy" for f in done):
+        done |= wait([f for f in futs if futs[f] == "agy"], timeout=AGY_S + 5 - BUDGET)[0]
     lists = []
     for f, n in futs.items():
         if f in done and not f.exception():

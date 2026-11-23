@@ -6,7 +6,8 @@
     python3 slim.py         show which switches are set
 
 Measured per request: Artifact 13.5K, Workflows 8.1K, git instructions 2.4K, background tasks 1.1K, cron 0.3K,
-advisor 0.2K tokens; short tasks -32%. Your MCP servers, skills, web tools and subagents stay. Applies to new sessions.
+advisor 0.2K tokens; short tasks -32%. Also drops the per-session attribution header, which made every new session
+and subagent re-write ~6K tokens of cache. Your MCP servers, skills, web tools and subagents stay. Applies to new sessions.
 Env: CLAUDE_DIR, else CLAUDE_CONFIG_DIR, else ~/.claude."""
 import json
 import os
@@ -17,6 +18,9 @@ from pathlib import Path
 
 SLIM = {f"CLAUDE_CODE_DISABLE_{k}": "1" for k in
         ("ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL")}
+# The per-session attribution header is the first system block and differs per session, so every new session and
+# subagent re-writes ~6K tokens of cache that would otherwise be read (measured on 2.1.330: 6,262 written -> 0).
+SLIM["CLAUDE_CODE_ATTRIBUTION_HEADER"] = "false"
 MARK = "CLAUDE_LEAN_SLIM"      # records which env keys slim set, so `off` removes only those
 
 
@@ -24,7 +28,7 @@ def strip(s):
     """Remove the switches slim added (per MARK). Returns s."""
     env = s.get("env", {})
     for k in (env.pop(MARK, "") or "").split(","):
-        if k and env.get(k) == "1":
+        if k and env.get(k) == SLIM.get(k, "1"):
             del env[k]
     if "env" in s and not env:
         del s["env"]
@@ -54,7 +58,7 @@ def main():
         sys.exit(f"{f} is not valid JSON; fix it first.")
     if cmd == "status":
         env = s.get("env", {})
-        on = [k for k in SLIM if env.get(k) == "1"]
+        on = [k for k in SLIM if env.get(k) == SLIM[k]]
         print(f"slim: {len(on)}/{len(SLIM)} switches set in {f}" + "".join(f"\n  {k}" for k in on))
         return
     before = json.dumps(s, sort_keys=True)

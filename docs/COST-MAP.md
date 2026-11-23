@@ -371,6 +371,17 @@ long and noisy tasks, and THOL for long and web tasks. A result that goes agains
 
 ### Found while building
 
+- **From the Claude Code Ultimate Guide review (2026-11-23):**
+  - `CLAUDE_CODE_ATTRIBUTION_HEADER=false` is now in slim. The header made each new session and subagent re-write
+    ~6K tokens of cache (2.1.330: 6,262 written vs 0).
+  - `CLAUDE_CODE_SIMPLE_SYSTEM_PROMPT=1` (shorter system prompt and tool descriptions): 19.8K -> 12.6K tokens per
+    request. THOL test `claude-lean-v4` pending; a default only if the pass rate holds.
+  - Unblocked by Claude Code 2.1.243+: B3 (`promptCacheTtl`, `subagentPromptCacheTtl`) and B4 (`PostModelSwitch`).
+  - Now built into Claude Code, overlapping ours: idle compaction (2.1.299), `/skill-doctor` (2.1.261), cache-miss
+    cause in `/cost` (2.1.260), a Concise output style (2.1.237).
+  - To try: `skillListingMaxDescChars` for large skill listings, `CLAUDE_CODE_SUBAGENT_EFFORT`, a lower
+    `BASH_MAX_OUTPUT_LENGTH`.
+
 - **Privacy:** the README said "no network calls". The web search hook sends search queries to public engines and
   GitHub. The README now says so, and `LEAN_WEB_SEARCH=0` keeps Claude Code's own search.
 - **MCP compaction** first dropped empty lists, but `"items": []` means "nothing found". It now keeps top-level fields

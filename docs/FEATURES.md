@@ -6,8 +6,8 @@ Everything Claude Lean does, with its off switch. Short version: [README](../REA
 
 | Agent | Command | What gets installed |
 |---|---|---|
-| Claude Code, plugin | `/plugin install lean@claude-lean` | 10 hooks, 2 skills, 4 `/lean:` commands. `/lean:slim on` adds the 6 settings. |
-| Claude Code | `npx claude-lean init` | 11 hooks (12 with `LEAN_DAY_USD`), 2 skills, 6 settings, 4 deny rules and a status line in `~/.claude/settings.json` (backed up first) |
+| Claude Code, plugin | `/plugin install lean@claude-lean` | 10 hooks, 2 skills, 4 `/lean:` commands. `/lean:slim on` adds the 7 settings. |
+| Claude Code | `npx claude-lean init` | 11 hooks (12 with `LEAN_DAY_USD`), 2 skills, 7 settings, 4 deny rules and a status line in `~/.claude/settings.json` (backed up first) |
 | Claude Code, quick jobs | `npx claude-lean lite` | Nothing. Starts Claude Code with only the core tools. |
 
 Your own hooks, settings, MCP servers and skills are left alone. Run `init` again any time to update.
@@ -27,7 +27,7 @@ Claude Code has no memory between requests, so each one re-sends everything: the
 
 Claude Lean shrinks the parts that don't need to be there:
 
-1. **Fixed overhead.** Six built-in Claude Code switches drop features most sessions never use. `lite` goes further for quick jobs.
+1. **Fixed overhead.** Six built-in Claude Code switches drop features most sessions never use, and a seventh stops each new session from re-writing ~6K tokens of cache. `lite` goes further for quick jobs.
 2. **Noise.** A 400-test pytest run arrives as 13 lines. Every failure and summary stays; the full original is one command away.
 3. **Focus.** Past 100K tokens a hook reminds you that `/clear` keeps an unrelated task focused, and "handoff" carries a short note across.
 
@@ -35,11 +35,11 @@ Claude Lean shrinks the parts that don't need to be there:
 
 - **Long-session guard.** Once a session passes 100K tokens (`LEAN_CLEAR_AT`), you get one line suggesting `/clear` before unrelated work. It's shown to you, never sent to the model, and stays silent on short sessions. It's about focus, not cost: back-to-back work is cheaper in one session.
 - **Handoff.** Say "handoff" before `/clear`. Claude saves a short note (goal, progress, next steps), and the next session in that folder starts with it. Used once; expires after 12 hours. It's for continuity, not cost: writing the note is an extra request.
-- **Slim.** On by default. Turns off Artifacts, Workflows, git instructions, background tasks, cron and the advisor tool, which cuts a typical setup from 49.5K to 24.9K tokens per request. Skip it with `--no-slim`.
+- **Slim.** On by default. Turns off Artifacts, Workflows, git instructions, background tasks, cron and the advisor tool, which cuts a typical setup from 49.5K to 24.9K tokens per request. It also turns off the per-session attribution header, so a new session or subagent reads the system prompt from cache instead of re-writing ~6K tokens (measured on Claude Code 2.1.330). Skip it with `--no-slim`.
 - **Lite.** `npx claude-lean lite` starts Claude Code with just Read, Edit, Write, Bash, Grep, Glob, Agent and TodoWrite: no MCP servers, no skills. On a clean install that's 5.4K tokens before you type instead of 17.2K. `--keep-mcp` and `--keep-skills` bring those back.
 - **Output filter.** For pytest, jest, npm, pip, cargo, go, docker, make and more. Drops progress bars, download chatter, passing tests and repeated lines; keeps errors, tracebacks and summaries. Dev servers and watchers are never touched.
 - **Output budget.** About 280 tokens of standing rules at session start: smallest change, 1-3 line answers, edit instead of rewriting, do the reading yourself instead of fanning out to subagents, batch independent tool calls, text before screenshots. `--no-terse` keeps only the subagent, web and batching rules.
-- **Web search budget.** Claude Code's WebSearch is a separate model request that re-sends the conversation as uncached input (~$0.07 a search on Sonnet). The hook serves searches itself from public search engines plus GitHub's repository search, skips pages an earlier search already showed, blocks repeated queries, and caps the paid searches at 15 per session (`LEAN_WEB_SEARCHES`; `LEAN_WEB_SEARCH=0` turns its own search off). It identifies itself honestly as `claude-lean`, which only GitHub's API and some engines accept; `LEAN_WEB_BROWSER=1` sends a browser's headers instead, which more engines answer (the THOL web result, $3.13 → $1.70, used that). On THOL's web research task the cap alone cut cost 36% with a higher score.
+- **Web search budget.** Claude Code's WebSearch is a separate model request that re-sends the conversation as uncached input (~$0.07 a search on Sonnet). The hook serves searches itself from public search engines plus GitHub's repository search, skips pages an earlier search already showed, blocks repeated queries, and caps the paid searches at 15 per session (`LEAN_WEB_SEARCHES`; `LEAN_WEB_SEARCH=0` turns its own search off). It identifies itself honestly as `claude-lean`, which only GitHub's API and some engines accept; `LEAN_WEB_BROWSER=1` sends a browser's headers instead, which more engines answer (the THOL web result, $3.13 → $1.70, used that). On THOL's web research task the cap alone cut cost 36% with a higher score. `LEAN_WEB_AGY=1` adds Google results through Google's own Antigravity CLI (`agy`) when it's installed and signed in: legitimate, on your Antigravity quota, but slow (18-50 s a search).
 - **Read guard.** A full read of a file over 1,000 lines (`LEAN_READ_LINES`) is paused once and Claude is pointed at Grep or a line range; repeating the read goes through. A re-read of an unchanged file returns a one-line note instead of the whole file again (`LEAN_READ_DEDUPE=0` to turn off). Reads were 36% of the author's own spend.
 - **Generated files.** `node_modules`, minified JS/CSS and source maps are denied to Read (`--no-deny` to keep them readable).
 - **MCP results.** JSON from MCP tools loses its nulls, empty fields and indentation before Claude sees it; every other value stays exactly as it was (`LEAN_MCP_COMPACT=0`).
