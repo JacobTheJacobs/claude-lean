@@ -139,7 +139,8 @@ uncached input per run.
 Every request carries the system prompt and every tool definition (17-50K tokens). With caching it is read at a tenth
 of the price on most turns, but it is written in full at the start of every session and after every cache miss.
 
-- **A1 Slim (DONE).** Sets `CLAUDE_CODE_DISABLE_{ARTIFACT,WORKFLOWS,GIT_INSTRUCTIONS,BACKGROUND_TASKS,CRON,ADVISOR_TOOL}`.
+- **A1 Slim (DONE).** Sets `CLAUDE_CODE_DISABLE_{ARTIFACT,WORKFLOWS,BACKGROUND_TASKS,CRON,ADVISOR_TOOL}`. Git instructions were dropped from the
+  list on 2026-11-23: with them off, SWE-bench django-13297 failed 0/6; with them on, 6/6 (plain, no-slim, slim minus git).
   - Measured per request: Artifact 13.5K, Workflows 8.1K, git instructions 2.4K, background tasks 1.1K, cron 0.3K and
     advisor 0.2K tokens.
   - Side effect found on THOL: without the subagent rule (D1), slim made Claude fan out to 9-10 Explore subagents.

@@ -5,7 +5,7 @@
     python3 slim.py off     remove only the switches slim added
     python3 slim.py         show which switches are set
 
-Measured per request: Artifact 13.5K, Workflows 8.1K, git instructions 2.4K, background tasks 1.1K, cron 0.3K,
+Measured per request: Artifact 13.5K, Workflows 8.1K, background tasks 1.1K, cron 0.3K,
 advisor 0.2K tokens; short tasks -32%. Also drops the per-session attribution header, which made every new session
 and subagent re-write ~6K tokens of cache. Your MCP servers, skills, web tools and subagents stay. Applies to new sessions.
 Env: CLAUDE_DIR, else CLAUDE_CONFIG_DIR, else ~/.claude."""
@@ -17,7 +17,8 @@ import time
 from pathlib import Path
 
 SLIM = {f"CLAUDE_CODE_DISABLE_{k}": "1" for k in
-        ("ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL")}
+        ("ARTIFACT", "WORKFLOWS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL")}
+# Git instructions stay on: turning them off lost SWE-bench django-13297 0/6 vs 6/6 with them (2026-11-23), for 2.4K tokens.
 # The per-session attribution header is the first system block and differs per session, so every new session and
 # subagent re-writes ~6K tokens of cache that would otherwise be read (measured on 2.1.330: 6,262 written -> 0).
 SLIM["CLAUDE_CODE_ATTRIBUTION_HEADER"] = "false"

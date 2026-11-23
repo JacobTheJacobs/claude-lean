@@ -149,6 +149,7 @@ class OtherHooks(unittest.TestCase):
         off = hook("terse_hook.py", {"source": "startup"}, {"LEAN_TERSE": "0"})["hookSpecificOutput"]["additionalContext"]
         self.assertIn("subagent", off)                # fan-out rule stays: slim alone caused it
         self.assertIn("WebFetch", off)
+        self.assertIn("never edit or delete an existing test", off)   # SWE-bench django-13297: Lean edited tests to fit its fix
         self.assertNotIn("smallest change", off)
 
     def test_web_guard(self):

@@ -16,7 +16,7 @@ const PARTS = ["hooks", "tools", "skills", "agents", "install.sh", "LICENSE"];
 // Clean install, first request (o200k tokens): 17.2K plain -> 5.4K lite.
 const LITE_TOOLS = process.env.LEAN_LITE_TOOLS || "Read,Edit,Write,Bash,Grep,Glob,Agent,TodoWrite";
 // Same switches as `install.sh` slim: features most sessions never use, each costing tokens on every request.
-const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "GIT_INSTRUCTIONS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL"]
+const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL"].map((k) => `CLAUDE_CODE_DISABLE_${k}`)
   .map((k) => `CLAUDE_CODE_DISABLE_${k}`);
 
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions

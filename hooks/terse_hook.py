@@ -23,12 +23,14 @@ AGENTS = ("- Do the reading yourself with Grep, Glob and Read; start a subagent 
           "- PDFs: when only the text matters, extract it (pdftotext or similar) and read that instead of the PDF.\n"
           "- Tests: run the narrowest test that proves a change; run the full suite once at the end.\n"
           "- Watching background work: filter to the events you will act on; every wake-up re-reads the whole context.\n")
+TESTS = ("- Keep behavior the task doesn't ask to change: read the existing tests for code you touch, and never edit or delete "
+         "an existing test to make your change pass; fix the code instead.\n")
 KEEP = "- Never trim correctness: keep needed validation and error handling, and keep code, commands, paths and errors exact."
-RULES = "Output budget (Claude Lean):\n" + OUTPUT + AGENTS + KEEP
+RULES = "Output budget (Claude Lean):\n" + OUTPUT + AGENTS + TESTS + KEEP
 
 
 def main():
-    rules = "Claude Lean:\n" + AGENTS.strip() if os.environ.get("LEAN_TERSE") == "0" else RULES
+    rules = "Claude Lean:\n" + (AGENTS + TESTS).strip() if os.environ.get("LEAN_TERSE") == "0" else RULES
     try:
         json.load(sys.stdin)
     except ValueError:
