@@ -34,7 +34,7 @@ hooks = {"UserPromptSubmit": [("", py("hooks/session_guard.py"))],
          # output budget: a few standing rules so Claude writes less (output costs several times input)
          "PreToolUse": [("Edit|Write|MultiEdit", py("hooks/cache_guard.py")),
                         ("WebSearch|WebFetch", py("hooks/web_guard.py")),    # web search budget: ~$0.07 per search
-                        ("Read", py("hooks/read_guard.py"))],       # large-file read: ask for a range first
+                        ("Read|Bash", py("hooks/read_guard.py"))],  # large-file read or cat: ask for a range first
          "PostToolUse": [("Read", py("hooks/read_guard.py")),       # identical re-read -> one-line note
                          ("mcp__.*", py("hooks/mcp_compact.py"))],  # MCP JSON: drop nulls/empties, minify
          "PostToolUseFailure": [("Bash|Edit|MultiEdit", py("hooks/loop_guard.py"))],  # same failure 3x -> change approach

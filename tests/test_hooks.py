@@ -214,6 +214,15 @@ class OtherHooks(unittest.TestCase):
                                        "tool_input": {"file_path": str(nb)}})
             self.assertIn("200,0", r["hookSpecificOutput"]["permissionDecisionReason"])
 
+    def test_read_guard_cat(self):
+        with tempfile.TemporaryDirectory() as td:
+            (Path(td) / "big.log").write_text("x\n" * 3000)
+            bash = lambda c: hook("read_guard.py", {"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": td,
+                                                    "transcript_path": "", "tool_input": {"command": c}})
+            self.assertEqual(bash("cat big.log")["hookSpecificOutput"]["permissionDecision"], "deny")
+            self.assertFalse(bash("cat big.log | grep x"))      # piped: output is already narrowed
+            self.assertFalse(bash("tail -50 big.log"))          # ranged
+
     def test_paste_note(self):
         r = hook("session_guard.py", {"prompt": "x" * 50_000})
         self.assertIn("stays in the context", r["systemMessage"])

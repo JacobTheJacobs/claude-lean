@@ -3,7 +3,7 @@
 
 Every Read result stays in the conversation and is re-read from cache on every later turn, so a big or repeated read
 is paid many times over.
-- PreToolUse, large file: a Read with no offset/limit of a text file over LEAN_READ_LINES lines (default 1000) or
+- PreToolUse, large file: a Read with no offset/limit (or a plain `cat`/`less`/`more FILE` in Bash) of a text file over LEAN_READ_LINES lines (default 1000) or
   LEAN_READ_BYTES bytes (default 100000: catches notebooks with embedded images, one-line JSON, minified code) is
   blocked once, with its size, and Claude is pointed at Grep or a line range. Repeating the same Read goes through.
 - PostToolUse, identical re-read: when the same file and range was read earlier in this session, has not changed, and
@@ -11,6 +11,7 @@ is paid many times over.
 LEAN_READ_LINES=0 turns the size check off; LEAN_READ_DEDUPE=0 turns the re-read note off. Any error: no change."""
 import hashlib
 import json
+import re
 import os
 import sys
 
@@ -40,9 +41,18 @@ def same_range(a, b):
     return (a.get("file_path"), a.get("offset"), a.get("limit")) == (b.get("file_path"), b.get("offset"), b.get("limit"))
 
 
+WHOLE = re.compile(r"^\s*(?:cat|less|more)\s+(\"[^\"]+\"|'[^']+'|[^\s|;&<>$`*?]+)\s*$")
+
+
 def pre(d):
     ti = d.get("tool_input") or {}
     path = ti.get("file_path") or ""
+    if d.get("tool_name") == "Bash":          # `cat big.log` reads the whole file just like Read does
+        m = WHOLE.match(ti.get("command") or "")
+        if not m:
+            return
+        path = os.path.join(d.get("cwd") or "", os.path.expanduser(m.group(1).strip("\"'")))
+        ti = {}
     if not (LINES or BYTES) or ti.get("offset") or ti.get("limit") or not os.path.isfile(path):
         return
     size = os.path.getsize(path)
@@ -60,7 +70,7 @@ def pre(d):
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
         "permissionDecisionReason": f"{MARK} {path} has {n:,} lines and {size:,} bytes (~{tokens:,} tokens), and a full read stays in "
         "the context for the rest of the session. If you need part of it, Grep for what you want or Read with "
-        "offset/limit. If you really need all of it, repeat this exact Read and it will go through."}}))
+        "offset/limit (or head/tail/sed -n in Bash). If you really need all of it, repeat this exact call and it will go through."}}))
 
 
 def post(d):
