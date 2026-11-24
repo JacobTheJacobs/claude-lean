@@ -403,6 +403,17 @@ class Installer(unittest.TestCase):
             self.assertEqual(json.loads(f.read_text()), mine)
             self.assertFalse((Path(d) / "agents/reader.md").exists())
 
+    def test_replaces_hooks_from_another_install(self):
+        with tempfile.TemporaryDirectory() as d:
+            old = lambda c: {"hooks": [{"type": "command", "command": c}]}
+            f = Path(d) / "settings.json"
+            f.write_text(json.dumps({"hooks": {"SessionStart": [old("python3 /old/claude-lean/hooks/terse_hook.py"),
+                                                                old("python3 /other/hooks/terse_hook.py")]}}))
+            self.install(d)
+            cmds = [h["command"] for g in json.loads(f.read_text())["hooks"]["SessionStart"] for h in g["hooks"]]
+            self.assertNotIn("python3 /old/claude-lean/hooks/terse_hook.py", cmds)   # stale Lean copy removed
+            self.assertIn("python3 /other/hooks/terse_hook.py", cmds)                # someone else's hook kept
+
     def test_slim_keeps_user_env(self):
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "settings.json"

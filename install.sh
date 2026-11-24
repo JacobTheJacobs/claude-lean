@@ -16,7 +16,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import json, os, shlex, shutil, sys, time
+import json, os, re, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
@@ -64,7 +64,9 @@ try:
 except ValueError:
     sys.exit(f"{settings_f} is not valid JSON; fix it first.")
 before = json.dumps(s, sort_keys=True)
-mine = lambda cmd: str(here) in cmd and ("/hooks/" in cmd)
+# ours: this copy's hooks, and Lean hooks left by an install from another folder (else every hook runs twice)
+names = "|".join(re.escape(p.name) for p in (here / "hooks").glob("*.py"))
+mine = lambda cmd: "/hooks/" in cmd and (str(here) in cmd or bool(re.search(rf"claude-lean[^ ]*/hooks/({names})\b", cmd)))
 
 # always strip our old entries first, so re-running updates paths and options cleanly
 for ev, groups in list(s.get("hooks", {}).items()):
