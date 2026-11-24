@@ -9,7 +9,9 @@ const { spawnSync } = require("child_process");
 const CLI = path.join(__dirname, "..", "bin", "cli.js");
 
 function cli(args, env) {
-  return spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, ...env } });
+  // a Claude Code session running the tests may already set the slim switches; start without them
+  const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("CLAUDE_CODE_DISABLE_")));
+  return spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...base, ...env } });
 }
 
 test("help and version", () => {

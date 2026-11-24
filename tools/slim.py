@@ -8,8 +8,8 @@
 Measured per request on Claude Code 2.1.239: Artifact 13.5K, Workflows 8.1K, background tasks 1.1K, cron 0.3K,
 advisor 0.2K tokens; short tasks -32%. From 2.1.330 those tools are gone or loaded on demand and the switches save
 nothing; there the big always-loaded tool definitions are ScheduleWakeup (/loop dynamic mode, 1.2K) and ListAgents
-(messaging other sessions, 0.5K), which slim denies, the Explore/Plan agent listing, and the bundled skills listing
-(2.4K; the skills still run when you type /name). Also drops the per-session
+(messaging other sessions, 0.5K), which slim denies, the Explore/Plan agent listing, and the bundled skills'
+descriptions (2.4K; names stay, so Claude and /name can still use them). Also drops the per-session
 attribution header, which made every new session and subagent re-write ~6K tokens of cache. Your MCP servers, skills,
 web tools and other subagents stay. Applies to new sessions.
 Env: CLAUDE_DIR, else CLAUDE_CONFIG_DIR, else ~/.claude."""
@@ -31,12 +31,12 @@ MARK = "CLAUDE_LEAN_SLIM"      # records which env keys slim set, so `off` remov
 # 20,531 -> 17,281 tokens). Denying a tool removes it from the request.
 DENY = ["ScheduleWakeup", "ListAgents"]
 DENY_MARK = "CLAUDE_LEAN_SLIM_DENY"
-# Skills that ship with Claude Code (2.1.330): their descriptions ride in every request (~2.4K tokens). "user-invocable-only"
-# hides them from Claude but keeps /name working when you type it.
+# Skills that ship with Claude Code (2.1.330): their descriptions ride in every request (~2.4K tokens). "name-only" lists
+# just the name: Claude can still pick one, /name still works. 16,147 tokens vs 16,027 with them hidden from Claude.
 SKILLS = ["batch", "claude-api", "code-review", "dataviz", "debug", "design-sync", "fewer-permission-prompts", "run",
           "run-skill-generator", "schedule", "ship-local", "simplify", "steward", "update-config", "verify", "init",
           "security-review", "keybindings-help", "plugin-authoring"]
-HIDE = "user-invocable-only"
+HIDE = "name-only"
 SKILLS_MARK = "CLAUDE_LEAN_SLIM_SKILLS"
 
 

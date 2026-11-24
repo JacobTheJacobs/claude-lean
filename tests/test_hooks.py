@@ -427,7 +427,7 @@ class Installer(unittest.TestCase):
             self.assertNotIn("CLAUDE_CODE_DISABLE_CRON", env["CLAUDE_LEAN_SLIM"])   # was the user's own
             self.assertIn("ScheduleWakeup", s["permissions"]["deny"])
             self.assertEqual(s["permissions"]["deny"].count("ListAgents"), 1)       # user's own, not added twice
-            self.assertEqual(s["skillOverrides"]["code-review"], "user-invocable-only")  # hidden from Claude, /code-review works
+            self.assertEqual(s["skillOverrides"]["code-review"], "name-only")            # description dropped, skill still usable
             self.assertEqual(s["skillOverrides"]["simplify"], "on")                 # user's own choice kept
             self.install(d)
             self.assertEqual(json.loads(f.read_text()), s)                          # re-run changes nothing

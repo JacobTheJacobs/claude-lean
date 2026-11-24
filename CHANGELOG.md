@@ -9,8 +9,8 @@
 
 - Slim works again on Claude Code 2.1.330. Its switches stopped saving anything there (those tools are gone or load
   on demand), so Lean's prompt was ~700 tokens bigger than plain Claude Code's. Slim now also denies the
-  ScheduleWakeup and ListAgents tools, hides the Explore/Plan agents, and hides the bundled skills from Claude while
-  keeping them typable (`/code-review`, `/simplify`, ...): 16.0K tokens per request vs 20.5K plain (-22%).
+  ScheduleWakeup and ListAgents tools, hides the Explore/Plan agents, and lists the bundled skills by name only (Claude
+  and `/name` can still use them): 16.1K tokens per request vs 20.5K plain (-21%).
 
 ### Fixed
 - `lite` added the `CLAUDE_CODE_DISABLE_` prefix twice, so its switches did nothing.
