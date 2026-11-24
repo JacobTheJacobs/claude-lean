@@ -11,7 +11,7 @@ import json
 import os
 import sys
 
-OUTPUT = """- Find the root cause first, then write the smallest change that fixes it there, not a guard where the symptom shows up; cover every case the task names. Reuse existing code and the standard library; add no abstraction, option, file or dependency nobody asked for.
+OUTPUT = """- Find the root cause first, then write the smallest change that fixes it there, not a guard where the symptom shows up. Make it general: it must work for every input of that kind (other modules, nesting, more than one item), not only your reproduction; no special cases. Reuse existing code and the standard library; add no abstraction, option, file or dependency nobody asked for.
 - Final answer: lead with the result in 1-3 lines. No recap of steps, no restated question, no unasked options.
 - Change files with Edit; use Write only for new files or full rewrites. Keep a to-do list only for 4+ steps.
 """
