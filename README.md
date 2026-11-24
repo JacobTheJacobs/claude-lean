@@ -2,9 +2,9 @@
 
 # Claude Lean
 
-### 61% cheaper than plain Claude Code.
+### Up to 61% cheaper than plain Claude Code.
 
-**61% cheaper on SWE-bench Lite and 3.6x faster, 22% cheaper on the public THOL leaderboard tasks, every THOL task passing.** One command, open source, no account, no telemetry.
+**61% cheaper and 3.6x faster on SWE-bench Lite. 22% cheaper on the public THOL leaderboard, every run passing.** One command, open source, no account, no telemetry.
 
 [![npm](https://img.shields.io/npm/v/claude-lean?color=cb3837&logo=npm)](https://www.npmjs.com/package/claude-lean)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/JacobTheJacobs/claude-lean/blob/master/LICENSE)
@@ -28,7 +28,7 @@ Or as a Claude Code plugin (no output filter, deny rules or status line; plugins
 /lean:slim on
 ```
 
-Needs Python 3.8+ (macOS, Linux, WSL) and Node 18+ for `npx`. Use one of the two, not both.
+Needs Python 3.8+ (macOS, Linux, WSL) and Node 18+ for `npx`. Install it one way, not both.
 
 ## Results
 
@@ -42,9 +42,9 @@ Real GitHub issues, graded by the official SWE-bench harness. Sonnet 4.6, same p
 | SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%) | 135 / 137 min |
 | **Total** | **43** | **26 / 25** | **$34.95 / $29.37 (-16%)** | **211 / 158 min** |
 
-On Verified, Lean was cheaper on 19 of 33 tasks; a few hard tasks that ran long cancel it out. The same task can cost
-2-5x more from one run to the next, so read the Verified cost as even. 0.2.8 added two rules after studying the tasks
-Lean missed; on rerun it solved 2 of them (django-15973, sphinx-8548). Details: [docs/BENCHMARKS.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/BENCHMARKS.md#swe-bench).
+Lean was cheaper on 19 of the 33 Verified tasks, but a few long runs on hard tasks evened out the total. The same task
+can cost 2-5x more from one run to the next. Two rules added in 0.2.8 fixed 2 of the tasks Lean missed (django-15973,
+sphinx-8548). Details: [docs/BENCHMARKS.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/BENCHMARKS.md#swe-bench).
 
 ### THOL: every token-saving tool on the board
 
@@ -66,7 +66,7 @@ Lean missed; on rerun it solved 2 of them (django-15973, sphinx-8548). Details: 
 | lean-ctx | -33.6% | -10.3% | -23.4% | 170/170 |
 | headroom | -57.7% | -52.8% | -55.7% | 170/170 |
 
-\* Our local run of the same harness and tasks (3 runs per task); every other row is the board as published. Lean and tokenade are within noise of each other.
+\* Our run of the same harness and tasks, 3 runs per task; every other row is the board as published. Lean and tokenade are within noise of each other.
 
 Our own evals (Haiku 5.5, 238 graded tasks, all passed): `claude-lean lite` -57% short / -34% long / -60% noisy builds. **All benchmarks, including the ones that went against us: [docs/BENCHMARKS.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/BENCHMARKS.md).**
 
