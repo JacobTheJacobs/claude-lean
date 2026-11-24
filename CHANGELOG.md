@@ -6,14 +6,14 @@
 - Output budget: find the root cause first and fix it there, not with a guard where the symptom shows up; make the
   fix general, not only for the reproduced case. These were the two reasons Lean missed SWE-bench tasks plain solved
   (django-15973, sphinx-8548); with them it solved both.
-
 - Slim works again on Claude Code 2.1.330. Its switches stopped saving anything there (those tools are gone or load
-  on demand), so Lean's prompt was ~700 tokens bigger than plain Claude Code's. Slim now also denies the
-  ScheduleWakeup and ListAgents tools, hides the Explore/Plan agents, and lists the bundled skills by name only (Claude
-  and `/name` can still use them): 16.1K tokens per request vs 20.5K plain (-21%).
+  on demand), so Lean's prompt was ~700 tokens bigger than plain Claude Code's. Slim now also denies the ListAgents
+  tool, hides the Explore/Plan agents and caps skill descriptions at 200 characters: 16.4K tokens per request vs
+  20.5K plain (-20%).
 
 ### Fixed
-- `lite` added the `CLAUDE_CODE_DISABLE_` prefix twice, so its switches did nothing.
+- `lite` added the `CLAUDE_CODE_DISABLE_` prefix twice, so its switches did nothing (0.2.7's fix didn't work; its test
+  passed only because the test ran inside a session that already had the switches set).
 - `init` removes hooks left by a Lean install in another folder. They ran every hook twice and kept the old rules.
 
 ## [0.2.7] - 2026-11-23

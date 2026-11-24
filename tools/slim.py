@@ -7,9 +7,9 @@
 
 Measured per request on Claude Code 2.1.239: Artifact 13.5K, Workflows 8.1K, background tasks 1.1K, cron 0.3K,
 advisor 0.2K tokens; short tasks -32%. From 2.1.330 those tools are gone or loaded on demand and the switches save
-nothing; there the big always-loaded tool definitions are ScheduleWakeup (/loop dynamic mode, 1.2K) and ListAgents
-(messaging other sessions, 0.5K), which slim denies, the Explore/Plan agent listing, and the bundled skills'
-descriptions (2.4K; names stay, so Claude and /name can still use them). Also drops the per-session
+nothing. There slim denies ListAgents (messaging other sessions, 0.5K, always loaded), hides the Explore/Plan agent
+listing, and caps each skill description in the skill listing at 200 characters (Claude Code's default is 1,536; the
+skills themselves are unchanged and still run): 20.5K -> 16.4K tokens per request with Lean's own rules included. Also drops the per-session
 attribution header, which made every new session and subagent re-write ~6K tokens of cache. Your MCP servers, skills,
 web tools and other subagents stay. Applies to new sessions.
 Env: CLAUDE_DIR, else CLAUDE_CONFIG_DIR, else ~/.claude."""
@@ -27,17 +27,12 @@ SLIM = {f"CLAUDE_CODE_DISABLE_{k}": "1" for k in
 # subagent re-writes ~6K tokens of cache that would otherwise be read (measured on 2.1.330: 6,262 written -> 0).
 SLIM["CLAUDE_CODE_ATTRIBUTION_HEADER"] = "false"
 MARK = "CLAUDE_LEAN_SLIM"      # records which env keys slim set, so `off` removes only those
-# Tools whose full definitions ride in every request on 2.1.330 (measured with both denied plus ReportFindings:
-# 20,531 -> 17,281 tokens). Denying a tool removes it from the request.
-DENY = ["ScheduleWakeup", "ListAgents"]
+# Always-loaded tool definition few sessions use. Denying a tool removes it from the request.
+DENY = ["ListAgents"]
 DENY_MARK = "CLAUDE_LEAN_SLIM_DENY"
-# Skills that ship with Claude Code (2.1.330): their descriptions ride in every request (~2.4K tokens). "name-only" lists
-# just the name: Claude can still pick one, /name still works. 16,147 tokens vs 16,027 with them hidden from Claude.
-SKILLS = ["batch", "claude-api", "code-review", "dataviz", "debug", "design-sync", "fewer-permission-prompts", "run",
-          "run-skill-generator", "schedule", "ship-local", "simplify", "steward", "update-config", "verify", "init",
-          "security-review", "keybindings-help", "plugin-authoring"]
-HIDE = "name-only"
-SKILLS_MARK = "CLAUDE_LEAN_SLIM_SKILLS"
+# Skill descriptions ride in every request; the first 200 characters carry the "use when" part.
+DESC = ("skillListingMaxDescChars", 200)
+DESC_MARK = "CLAUDE_LEAN_SLIM_DESC"
 
 
 def strip(s):
@@ -46,12 +41,8 @@ def strip(s):
     for k in (env.pop(MARK, "") or "").split(","):
         if k and env.get(k) == SLIM.get(k, "1"):
             del env[k]
-    over = s.get("skillOverrides", {})
-    for k in (env.pop(SKILLS_MARK, "") or "").split(","):
-        if k and over.get(k) == HIDE:
-            del over[k]
-    if "skillOverrides" in s and not over:
-        del s["skillOverrides"]
+    if env.pop(DESC_MARK, None) and s.get(DESC[0]) == DESC[1]:
+        del s[DESC[0]]
     ours = (env.pop(DENY_MARK, "") or "").split(",")
     perm = s.get("permissions", {})
     if "deny" in perm:
@@ -77,20 +68,17 @@ def add(s):
     have.extend(denied)
     if denied:
         env[DENY_MARK] = ",".join(denied)
-    over = s.setdefault("skillOverrides", {})
-    hidden = [k for k in SKILLS if k not in over]
-    over.update({k: HIDE for k in hidden})
-    if hidden:
-        env[SKILLS_MARK] = ",".join(hidden)
-    if not over:
-        del s["skillOverrides"]
+    capped = DESC[0] not in s
+    if capped:
+        s[DESC[0]] = DESC[1]
+        env[DESC_MARK] = "1"
     if not have:
         del s["permissions"]["deny"]
         if not s["permissions"]:
             del s["permissions"]
     if not env:
         del s["env"]
-    return added + denied + (["skills listing"] if hidden else [])
+    return added + denied + ([f"{DESC[0]}={DESC[1]}"] if capped else [])
 
 
 def main():

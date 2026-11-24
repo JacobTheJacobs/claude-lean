@@ -9,7 +9,7 @@
 #                              are large, generated, and almost never what Claude needs)
 #   ./install.sh --no-statusline  don't add the cost status line (it's only added when you have no status line)
 #   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools, the
-#                              Explore/Plan agents and the ScheduleWakeup/ListAgents tools in every request
+#                              Explore/Plan agents, the ListAgents tool and full skill descriptions in every request
 #   ./install.sh --dry-run     show every change, write nothing
 #   ./install.sh --uninstall   remove everything Claude Lean added
 # Env: CLAUDE_DIR (default $CLAUDE_CONFIG_DIR, else ~/.claude), LEAN_DAY_USD=N adds the daily dollar cap hook (N dollars per day).
