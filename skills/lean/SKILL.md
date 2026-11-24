@@ -11,7 +11,7 @@ Loaded only when called, so it costs nothing on turns that do not need it.
 
 1. Is there already code that does this? Grep first; reuse it.
 2. Can the standard library or an installed dependency do it? Use that.
-3. What is the smallest change that passes? Write that, nothing more.
+3. Where is the root cause? Write the smallest change that fixes it there, not a guard where the symptom shows up.
 4. No abstraction, option, config or helper nobody asked for.
 5. Deleting beats adding. Fixing the caller beats a new wrapper.
 6. Bug fix: find every caller before you edit; fix the cause, not the symptom.
