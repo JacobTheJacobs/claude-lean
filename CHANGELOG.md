@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.8] - 2026-11-24
+
+### Changed
+- Output budget: find the root cause first and fix it there, not with a guard where the symptom shows up; make the
+  fix general, not only for the reproduced case. These were the two reasons Lean missed SWE-bench tasks plain solved
+  (django-15973, sphinx-8548); with them it solved both.
+
+### Fixed
+- `init` removes hooks left by a Lean install in another folder. They ran every hook twice and kept the old rules.
+
 ## [0.2.7] - 2026-11-23
 
 ### Fixed

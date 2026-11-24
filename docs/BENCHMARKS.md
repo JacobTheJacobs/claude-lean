@@ -4,6 +4,27 @@ Every benchmark we ran, including the ones that went against us. Each comes from
 [`evals/`](../evals) or from the public [THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard)
 harness, and can be re-run.
 
+## SWE-bench
+
+Plain Claude Code vs Claude Lean (`init`, `LEAN_WEB_AGY=1`) on real GitHub issues, graded by the official SWE-bench
+harness. Sonnet 4.6, the code-compression-bench prompt, max 100 turns, one run per task, 2026-11-23/24.
+
+| | Tasks | Solved, plain / Lean | Cost, plain / Lean | Time, plain / Lean |
+|---|--:|--:|--:|--:|
+| SWE-bench Lite | 10 | 6 / 5 | $10.17 / $3.99 (-61%) | 76 / 21 min |
+| SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%) | 135 / 137 min |
+| Total | 43 | 26 / 25 | $34.95 / $29.37 (-16%) | 211 / 158 min |
+
+Earlier, the first 10 Verified tasks: plain 8, Lean 6 solved, Lean 25% cheaper (grading logs lost to a reboot, not in the table).
+
+- **Variance.** Lean was cheaper on 19 of 33 Verified tasks; four hard tasks that ran 50-100 turns cancel that out.
+  Rerunning the two worst gave plain $0.80 then $3.57 and Lean $2.72 then $1.26 on the same task, so one run per task
+  can't resolve a few percent.
+- **Losses studied.** Lean lost django-15973 (a guard where the error showed up instead of a fix at the cause) and
+  sphinx-8548 (fixed only base classes in the same module). 0.2.8 adds "root cause first" and "make it general"; on
+  rerun Lean solved both. sympy-16503 still fails (plain solved it 1 of 2 times).
+- **Test rule kept.** Without the rule against editing existing tests, Lean cost more on both hard tasks ($2.54 and $4.72).
+
 ## 1. THOL: every tool on the board
 
 | Tool (version) | Short tasks (10) | Heavy tasks (7) | All 17 | Runs passed |
