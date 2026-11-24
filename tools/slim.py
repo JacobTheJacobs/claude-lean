@@ -5,9 +5,12 @@
     python3 slim.py off     remove only the switches slim added
     python3 slim.py         show which switches are set
 
-Measured per request: Artifact 13.5K, Workflows 8.1K, background tasks 1.1K, cron 0.3K,
-advisor 0.2K tokens; short tasks -32%. Also drops the per-session attribution header, which made every new session
-and subagent re-write ~6K tokens of cache. Your MCP servers, skills, web tools and subagents stay. Applies to new sessions.
+Measured per request on Claude Code 2.1.239: Artifact 13.5K, Workflows 8.1K, background tasks 1.1K, cron 0.3K,
+advisor 0.2K tokens; short tasks -32%. From 2.1.330 those tools are gone or loaded on demand and the switches save
+nothing; there the big always-loaded tool definitions are ScheduleWakeup (/loop dynamic mode, 1.2K) and ListAgents
+(messaging other sessions, 0.5K), which slim denies, and the Explore/Plan agent listing. Also drops the per-session
+attribution header, which made every new session and subagent re-write ~6K tokens of cache. Your MCP servers, skills,
+web tools and other subagents stay. Applies to new sessions.
 Env: CLAUDE_DIR, else CLAUDE_CONFIG_DIR, else ~/.claude."""
 import json
 import os
@@ -17,12 +20,16 @@ import time
 from pathlib import Path
 
 SLIM = {f"CLAUDE_CODE_DISABLE_{k}": "1" for k in
-        ("ARTIFACT", "WORKFLOWS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL")}
+        ("ARTIFACT", "WORKFLOWS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL", "EXPLORE_PLAN_AGENTS")}
 # Git instructions stay on: turning them off lost SWE-bench django-13297 0/6 vs 6/6 with them (2026-11-23), for 2.4K tokens.
 # The per-session attribution header is the first system block and differs per session, so every new session and
 # subagent re-writes ~6K tokens of cache that would otherwise be read (measured on 2.1.330: 6,262 written -> 0).
 SLIM["CLAUDE_CODE_ATTRIBUTION_HEADER"] = "false"
 MARK = "CLAUDE_LEAN_SLIM"      # records which env keys slim set, so `off` removes only those
+# Tools whose full definitions ride in every request on 2.1.330 (measured with both denied plus ReportFindings:
+# 20,531 -> 17,281 tokens). Denying a tool removes it from the request.
+DENY = ["ScheduleWakeup", "ListAgents"]
+DENY_MARK = "CLAUDE_LEAN_SLIM_DENY"
 
 
 def strip(s):
@@ -31,6 +38,14 @@ def strip(s):
     for k in (env.pop(MARK, "") or "").split(","):
         if k and env.get(k) == SLIM.get(k, "1"):
             del env[k]
+    ours = (env.pop(DENY_MARK, "") or "").split(",")
+    perm = s.get("permissions", {})
+    if "deny" in perm:
+        perm["deny"] = [r for r in perm["deny"] if r not in ours]
+        if not perm["deny"]:
+            del perm["deny"]
+        if not perm:
+            del s["permissions"]
     if "env" in s and not env:
         del s["env"]
     return s
@@ -43,9 +58,18 @@ def add(s):
     env.update({k: SLIM[k] for k in added})
     if added:
         env[MARK] = ",".join(added)
-    elif not env:
+    have = s.setdefault("permissions", {}).setdefault("deny", [])
+    denied = [t for t in DENY if t not in have]
+    have.extend(denied)
+    if denied:
+        env[DENY_MARK] = ",".join(denied)
+    if not have:
+        del s["permissions"]["deny"]
+        if not s["permissions"]:
+            del s["permissions"]
+    if not env:
         del s["env"]
-    return added
+    return added + denied
 
 
 def main():

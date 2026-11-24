@@ -15,8 +15,8 @@ const PARTS = ["hooks", "tools", "skills", "agents", "install.sh", "LICENSE"];
 // them. Measured on 5 short tasks x 3 (Haiku 5.5): 49.5K -> ~20K tokens per request, $0.0081 -> $0.0021, 15/15 both.
 // Clean install, first request (o200k tokens): 17.2K plain -> 5.4K lite.
 const LITE_TOOLS = process.env.LEAN_LITE_TOOLS || "Read,Edit,Write,Bash,Grep,Glob,Agent,TodoWrite";
-// Same switches as `install.sh` slim: features most sessions never use, each costing tokens on every request.
-const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL"].map((k) => `CLAUDE_CODE_DISABLE_${k}`)
+// `install.sh` slim's switches plus the bundled skills listing (2.4K tokens on 2.1.330): features quick jobs never use.
+const SLIM_ENV = ["ARTIFACT", "WORKFLOWS", "BACKGROUND_TASKS", "CRON", "ADVISOR_TOOL", "EXPLORE_PLAN_AGENTS", "BUNDLED_SKILLS"]
   .map((k) => `CLAUDE_CODE_DISABLE_${k}`);
 
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs on long sessions

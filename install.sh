@@ -8,8 +8,8 @@
 #   ./install.sh --no-deny     let Claude read node_modules, minified files and source maps (denied by default: they
 #                              are large, generated, and almost never what Claude needs)
 #   ./install.sh --no-statusline  don't add the cost status line (it's only added when you have no status line)
-#   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools and git
-#                              instructions in every request (slim drops ~24K tokens per request: short tasks -32%)
+#   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools, the
+#                              Explore/Plan agents and the ScheduleWakeup/ListAgents tools in every request
 #   ./install.sh --dry-run     show every change, write nothing
 #   ./install.sh --uninstall   remove everything Claude Lean added
 # Env: CLAUDE_DIR (default $CLAUDE_CONFIG_DIR, else ~/.claude), LEAN_DAY_USD=N adds the daily dollar cap hook (N dollars per day).
@@ -105,7 +105,7 @@ if not un:
             say(f"hook   {ev:<17} {matcher or '*':<20} {cmd.split('/')[-1]}")
     if "--no-slim" not in args:
         if (added := slim.add(s)):
-            say(f"env    {len(added)} slim switches (CLAUDE_CODE_DISABLE_ARTIFACT, _WORKFLOWS, ...)")
+            say(f"slim   {', '.join(added)}")
     for r in allow:
         s.setdefault("permissions", {}).setdefault("allow", []).append(r)
         say(f"allow  {r}")

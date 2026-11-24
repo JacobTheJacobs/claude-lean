@@ -417,13 +417,19 @@ class Installer(unittest.TestCase):
     def test_slim_keeps_user_env(self):
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "settings.json"
-            f.write_text(json.dumps({"env": {"FOO": "1", "CLAUDE_CODE_DISABLE_CRON": "1"}}))
+            mine = {"env": {"FOO": "1", "CLAUDE_CODE_DISABLE_CRON": "1"}, "permissions": {"deny": ["ListAgents"]}}
+            f.write_text(json.dumps(mine))
             self.install(d)
-            env = json.loads(f.read_text())["env"]
+            s = json.loads(f.read_text())
+            env = s["env"]
             self.assertEqual(env["CLAUDE_CODE_DISABLE_ARTIFACT"], "1")
             self.assertNotIn("CLAUDE_CODE_DISABLE_CRON", env["CLAUDE_LEAN_SLIM"])   # was the user's own
+            self.assertIn("ScheduleWakeup", s["permissions"]["deny"])
+            self.assertEqual(s["permissions"]["deny"].count("ListAgents"), 1)       # user's own, not added twice
+            self.install(d)
+            self.assertEqual(json.loads(f.read_text()), s)                          # re-run changes nothing
             self.install(d, "--uninstall")
-            self.assertEqual(json.loads(f.read_text()), {"env": {"FOO": "1", "CLAUDE_CODE_DISABLE_CRON": "1"}})
+            self.assertEqual(json.loads(f.read_text()), mine)
             self.install(d, "--no-slim")
             self.assertNotIn("CLAUDE_CODE_DISABLE_ARTIFACT", f.read_text())
 
