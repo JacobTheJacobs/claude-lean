@@ -39,7 +39,7 @@ Real GitHub issues, graded by the official SWE-bench harness. Sonnet 4.6, same p
 | | Tasks | Solved, plain / Lean | Cost, plain / Lean | Time, plain / Lean |
 |---|--:|--:|--:|--:|
 | SWE-bench Lite | 10 | 6 / 5 | $10.17 / **$3.99 (-61%)** | 76 / **21 min** |
-| SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%) | 135 / 137 min |
+| SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%, even) | 135 / 137 min |
 | **Total** | **43** | **26 / 25** | **$34.95 / $29.37 (-16%)** | **211 / 158 min** |
 
 Lean was cheaper on 19 of the 33 Verified tasks, but a few long runs on hard tasks evened out the total. The same task
@@ -48,23 +48,23 @@ sphinx-8548). Details: [docs/BENCHMARKS.md](https://github.com/JacobTheJacobs/cl
 
 ### THOL: every token-saving tool on the board
 
-[THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard), the public token-optimizer leaderboard: 17 real tasks on Sonnet 4.6, cost reduction vs plain Claude Code (higher is better).
+[THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard), the public token-optimizer leaderboard: 17 real tasks on Sonnet 4.6, cost vs plain Claude Code (minus = cheaper).
 
 | Tool | Short tasks (10) | Heavy tasks (7) | All 17 | Runs passed |
 |---|--:|--:|--:|--:|
-| **Claude Lean** (0.2.5) * | **+12.5%** | +34.7% | +22.4% | 51/51 |
-| tokenade (0.8.13) | +9.9% | **+38.9%** | **+23.2%** | 170/170 |
-| claude-token-efficient | -0.3% | +11.6% | +4.8% | 170/170 |
-| ponytail | +4.7% | +3.5% | +4.2% | 170/170 |
-| caveman (v1.9.0) | -7.2% | +13.6% | +1.9% | 170/170 |
-| graphify | -0.8% | +3.3% | +0.9% | 170/170 |
-| edgee | -13.6% | +14.7% | -0.9% | 169/170 |
-| squeez | -7.0% | +6.9% | -1.0% | 170/170 |
-| code-review-graph | -8.5% | +8.5% | -1.1% | 170/170 |
-| codegraph | -14.7% | +7.6% | -4.9% | 170/170 |
-| rtk (v0.42.3) | -3.9% | -7.1% | -5.2% | 170/170 |
-| lean-ctx | -33.6% | -10.3% | -23.4% | 170/170 |
-| headroom | -57.7% | -52.8% | -55.7% | 170/170 |
+| **Claude Lean** (0.2.5) * | **-12.5%** | -34.7% | -22.4% | 51/51 |
+| tokenade (0.8.13) | -9.9% | **-38.9%** | **-23.2%** | 170/170 |
+| claude-token-efficient | +0.3% | -11.6% | -4.8% | 170/170 |
+| ponytail | -4.7% | -3.5% | -4.2% | 170/170 |
+| caveman (v1.9.0) | +7.2% | -13.6% | -1.9% | 170/170 |
+| graphify | +0.8% | -3.3% | -0.9% | 170/170 |
+| edgee | +13.6% | -14.7% | +0.9% | 169/170 |
+| squeez | +7.0% | -6.9% | +1.0% | 170/170 |
+| code-review-graph | +8.5% | -8.5% | +1.1% | 170/170 |
+| codegraph | +14.7% | -7.6% | +4.9% | 170/170 |
+| rtk (v0.42.3) | +3.9% | +7.1% | +5.2% | 170/170 |
+| lean-ctx | +33.6% | +10.3% | +23.4% | 170/170 |
+| headroom | +57.7% | +52.8% | +55.7% | 170/170 |
 
 \* Our run of the same harness and tasks, 3 runs per task; every other row is the board as published. Lean and tokenade are within noise of each other.
 

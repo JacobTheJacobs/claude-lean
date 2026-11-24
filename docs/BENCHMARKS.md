@@ -12,7 +12,7 @@ harness. Sonnet 4.6, the code-compression-bench prompt, max 100 turns, one run p
 | | Tasks | Solved, plain / Lean | Cost, plain / Lean | Time, plain / Lean |
 |---|--:|--:|--:|--:|
 | SWE-bench Lite | 10 | 6 / 5 | $10.17 / $3.99 (-61%) | 76 / 21 min |
-| SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%) | 135 / 137 min |
+| SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%, even) | 135 / 137 min |
 | Total | 43 | 26 / 25 | $34.95 / $29.37 (-16%) | 211 / 158 min |
 
 Earlier, the first 10 Verified tasks: plain 8, Lean 6 solved, Lean 25% cheaper (grading logs lost to a reboot, not in the table).
@@ -29,28 +29,28 @@ Earlier, the first 10 Verified tasks: plain 8, Lean 6 solved, Lean 25% cheaper (
 
 | Tool (version) | Short tasks (10) | Heavy tasks (7) | All 17 | Runs passed |
 |---|--:|--:|--:|--:|
-| **Claude Lean** (0.2.5) * | **+12.5%** | **+34.7%** | **+22.4%** | 51/51 |
-| tokenade (0.8.13) | +9.9% | +38.9% | +23.2% | 170/170 |
-| claude-token-efficient (b32fa8b) | -0.3% | +11.6% | +4.8% | 170/170 |
-| ponytail (main) | +4.7% | +3.5% | +4.2% | 170/170 |
-| caveman (v1.9.0) | -7.2% | +13.6% | +1.9% | 170/170 |
-| graphify (0.8.49) | -0.8% | +3.3% | +0.9% | 170/170 |
-| edgee (v0.2.13) | -13.6% | +14.7% | -0.9% | 169/170 |
-| squeez (1.22.1) | -7.0% | +6.9% | -1.0% | 170/170 |
-| code-review-graph (2.3.6) | -8.5% | +8.5% | -1.1% | 170/170 |
-| codegraph (0.9.9) | -14.7% | +7.6% | -4.9% | 170/170 |
-| rtk (v0.42.3) | -3.9% | -7.1% | -5.2% | 170/170 |
-| lean-ctx (3.8.4) | -33.6% | -10.3% | -23.4% | 170/170 |
-| headroom (0.27.0) | -57.7% | -52.8% | -55.7% | 170/170 |
+| **Claude Lean** (0.2.5) * | **-12.5%** | **-34.7%** | **-22.4%** | 51/51 |
+| tokenade (0.8.13) | -9.9% | -38.9% | -23.2% | 170/170 |
+| claude-token-efficient (b32fa8b) | +0.3% | -11.6% | -4.8% | 170/170 |
+| ponytail (main) | -4.7% | -3.5% | -4.2% | 170/170 |
+| caveman (v1.9.0) | +7.2% | -13.6% | -1.9% | 170/170 |
+| graphify (0.8.49) | +0.8% | -3.3% | -0.9% | 170/170 |
+| edgee (v0.2.13) | +13.6% | -14.7% | +0.9% | 169/170 |
+| squeez (1.22.1) | +7.0% | -6.9% | +1.0% | 170/170 |
+| code-review-graph (2.3.6) | +8.5% | -8.5% | +1.1% | 170/170 |
+| codegraph (0.9.9) | +14.7% | -7.6% | +4.9% | 170/170 |
+| rtk (v0.42.3) | +3.9% | +7.1% | +5.2% | 170/170 |
+| lean-ctx (3.8.4) | +33.6% | +10.3% | +23.4% | 170/170 |
+| headroom (0.27.0) | +57.7% | +52.8% | +55.7% | 170/170 |
 
-Cost reduction vs plain Claude Code (higher is better), geometric mean over tasks, Sonnet 4.6. Every other row is
+Cost vs plain Claude Code (minus = cheaper), geometric mean over tasks, Sonnet 4.6. Every other row is
 the THOL board as published (10 runs per task, Claude Code 2.1.206). \* Claude Lean: our local run of the same
 harness and tasks, 3 runs per task, Claude Code 2.1.239, 2026-11-22; not an official board entry yet.
 
 Claude Lean per run vs plain: output tokens -18%, cache reads -32%. Biggest wins: Django settings inventory -59%,
 ledger debugging -49%, PDF report -49%, web research -46% ($3.13 → $1.70, same score). Tasks that cost more: Django
 code questions +10% and seo audit +5%, both inside run-to-run noise. An earlier 0.2.4 build without the web search
-hook scored +16.9% / +26.9% / +21.2%.
+hook scored -16.9% / -26.9% / -21.2%.
 
 ## 2. Our evals (Haiku 5.5)
 
