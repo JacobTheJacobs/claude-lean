@@ -35,21 +35,34 @@ DESC = ("skillListingMaxDescChars", 200)
 DESC_MARK = "CLAUDE_LEAN_SLIM_DESC"
 
 
+def bad_shape(s):
+    """Why settings.json can't be edited safely, or None. Claude Code's schema allows only these shapes."""
+    if not isinstance(s, dict):
+        return "the top level is not an object"
+    for k in ("env", "permissions", "hooks"):
+        if k in s and not isinstance(s[k], dict):
+            return f'"{k}" is not an object'
+    for k in ("allow", "deny"):
+        if not isinstance(s.get("permissions", {}).get(k, []), list):
+            return f'"permissions.{k}" is not a list'
+    return None
+
+
 def strip(s):
-    """Remove the switches slim added (per MARK). Returns s."""
+    """Remove what slim added (per the MARK keys). Returns s."""
     env = s.get("env", {})
     for k in (env.pop(MARK, "") or "").split(","):
         if k and env.get(k) == SLIM.get(k, "1"):
             del env[k]
     if env.pop(DESC_MARK, None) and s.get(DESC[0]) == DESC[1]:
         del s[DESC[0]]
-    ours = (env.pop(DENY_MARK, "") or "").split(",")
+    ours, _, made = (env.pop(DENY_MARK, "") or "").partition(";")   # made: p = slim created "permissions", d = "deny"
     perm = s.get("permissions", {})
-    if "deny" in perm:
-        perm["deny"] = [r for r in perm["deny"] if r not in ours]
-        if not perm["deny"]:
+    if ours and "deny" in perm:
+        perm["deny"] = [r for r in perm["deny"] if r not in ours.split(",")]
+        if not perm["deny"] and "d" in made:
             del perm["deny"]
-        if not perm:
+        if not perm and "p" in made:
             del s["permissions"]
     if "env" in s and not env:
         del s["env"]
@@ -57,25 +70,26 @@ def strip(s):
 
 
 def add(s):
-    """Add the switches that are not set yet. Returns the keys added."""
+    """Add what is not set yet. Returns what was added."""
     env = s.setdefault("env", {})
     added = [k for k in SLIM if k not in env]
     env.update({k: SLIM[k] for k in added})
     if added:
         env[MARK] = ",".join(added)
+    made = ("" if "permissions" in s else "p") + ("" if "deny" in s.get("permissions", {}) else "d")
     have = s.setdefault("permissions", {}).setdefault("deny", [])
     denied = [t for t in DENY if t not in have]
     have.extend(denied)
     if denied:
-        env[DENY_MARK] = ",".join(denied)
+        env[DENY_MARK] = ",".join(denied) + ";" + made
+    elif made:                                      # nothing added: leave the user's settings as they were
+        del s["permissions"]["deny"]
+        if "p" in made:
+            del s["permissions"]
     capped = DESC[0] not in s
     if capped:
         s[DESC[0]] = DESC[1]
         env[DESC_MARK] = "1"
-    if not have:
-        del s["permissions"]["deny"]
-        if not s["permissions"]:
-            del s["permissions"]
     if not env:
         del s["env"]
     return added + denied + ([f"{DESC[0]}={DESC[1]}"] if capped else [])
@@ -90,10 +104,14 @@ def main():
         s = json.loads(f.read_text()) if f.exists() else {}
     except ValueError:
         sys.exit(f"{f} is not valid JSON; fix it first.")
+    if bad := bad_shape(s):
+        sys.exit(f"{f}: {bad}; fix it first.")
     if cmd == "status":
         env = s.get("env", {})
         on = [k for k in SLIM if env.get(k) == SLIM[k]]
-        print(f"slim: {len(on)}/{len(SLIM)} switches set in {f}" + "".join(f"\n  {k}" for k in on))
+        on += [f"deny {t}" for t in DENY if t in s.get("permissions", {}).get("deny", [])]
+        on += [f"{DESC[0]}={s[DESC[0]]}"] if DESC[0] in s else []
+        print(f"slim: {len(on)}/{len(SLIM) + len(DENY) + 1} settings in {f}" + "".join(f"\n  {k}" for k in on))
         return
     before = json.dumps(s, sort_keys=True)
     strip(s)

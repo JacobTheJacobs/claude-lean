@@ -433,6 +433,30 @@ class Installer(unittest.TestCase):
             self.install(d, "--no-slim")
             self.assertNotIn("CLAUDE_CODE_DISABLE_ARTIFACT", f.read_text())
 
+    def test_other_folder_and_shapes(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "settings.json"
+            old = "python3 '/x/.claude-lean/tools/statusline.py'"
+            f.write_text(json.dumps({"statusLine": {"type": "command", "command": old},
+                                     "permissions": {"allow": ["Bash(python3 /x/claude-lean/tools/squeeze.py *)"]},
+                                     "hooks": {"Stop": [{"hooks": [{"type": "command",
+                                                                    "command": "python3 /x/claude-leaner/hooks/read_guard.py"}]}]}}))
+            self.install(d)
+            s = f.read_text()
+            self.assertNotIn("/x/.claude-lean/", s)                          # old copy's status line replaced
+            self.assertNotIn("/x/claude-lean/", s)                           # old copy's allow rule removed
+            self.assertIn("/x/claude-leaner/hooks/read_guard.py", s)         # not a Lean folder: kept
+            for start in ({"permissions": {}}, {"permissions": {"deny": []}}):      # slim on + off alone
+                f.write_text(json.dumps(start))
+                for c in ("on", "off"):
+                    subprocess.run([sys.executable, str(ROOT / "tools/slim.py"), c], env={**os.environ, "CLAUDE_DIR": d},
+                                   capture_output=True)
+                self.assertEqual(json.loads(f.read_text()), start)
+            f.write_text(json.dumps({"permissions": {"deny": "ListAgents"}}))
+            r = self.install(d)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertEqual(json.loads(f.read_text()), {"permissions": {"deny": "ListAgents"}})   # untouched
+
     def test_slim_keeps_user_desc_cap(self):
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "settings.json"

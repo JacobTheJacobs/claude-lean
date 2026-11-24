@@ -63,10 +63,15 @@ try:
     s = json.loads(settings_f.read_text()) if settings_f.exists() else {}
 except ValueError:
     sys.exit(f"{settings_f} is not valid JSON; fix it first.")
+if bad := slim.bad_shape(s):
+    sys.exit(f"{settings_f}: {bad}; fix it first.")
 before = json.dumps(s, sort_keys=True)
-# ours: this copy's hooks, and Lean hooks left by an install from another folder (else every hook runs twice)
+# ours: this copy's files, or the same file in another Lean folder (.claude-lean, claude-lean, a claude-boost clone)
+# left by an earlier install; else every hook runs twice and the status line points at the old copy
 names = "|".join(re.escape(p.name) for p in (here / "hooks").glob("*.py"))
-mine = lambda cmd: "/hooks/" in cmd and (str(here) in cmd or bool(re.search(rf"claude-lean[^ ]*/hooks/({names})\b", cmd)))
+def mine(cmd, sub=f"hooks/(?:{names})"):
+    return (str(here) in cmd and re.search(sub, cmd) is not None) or \
+        re.search(rf"(?:^|[/'\"])\.?claude-(?:lean|boost)/{sub}\b", cmd) is not None
 
 # always strip our old entries first, so re-running updates paths and options cleanly
 for ev, groups in list(s.get("hooks", {}).items()):
@@ -81,7 +86,7 @@ slim.strip(s)
 ours = (s.get("env", {}).pop(DENY_MARK, "") or "").split("|")
 if "env" in s and not s["env"]:
     del s["env"]
-if str(here / "tools" / "statusline.py") in json.dumps(s.get("statusLine", "")):
+if mine(json.dumps(s.get("statusLine", "")), r"tools/statusline\.py"):
     del s["statusLine"]                     # ours: re-added below unless uninstalling or --no-statusline
 perm = s.get("permissions", {})
 if "deny" in perm:
@@ -89,7 +94,7 @@ if "deny" in perm:
     if not perm["deny"]:
         del perm["deny"]
 if "allow" in perm:
-    perm["allow"] = [r for r in perm["allow"] if f"{here}/tools/squeeze.py" not in r]
+    perm["allow"] = [r for r in perm["allow"] if not mine(r, r"tools/squeeze\.py")]
     if not perm["allow"]:
         del perm["allow"]
 if "permissions" in s and not s["permissions"]:
