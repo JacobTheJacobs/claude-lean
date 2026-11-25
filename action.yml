@@ -1,0 +1,27 @@
+name: Claude Lean
+description: Cut Claude Code costs in CI without changing how Claude works. Turns off background requests and unused tools; local, no telemetry.
+author: JacobTheJacobs
+branding:
+  icon: scissors
+  color: orange
+inputs:
+  pin:
+    description: Also turn off Claude Code auto-updates (an update changes the prompt and re-writes the cache).
+    default: "false"
+  filter:
+    description: Removed in 0.3.0 (it changed what Claude sees); accepted and ignored so existing workflows keep working.
+    default: "true"
+  slim:
+    description: Removed in 0.3.0; accepted and ignored so existing workflows keep working.
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Install Claude Lean into ~/.claude
+      shell: bash
+      env:
+        LEAN_PIN: ${{ inputs.pin }}
+      run: |
+        flags=()
+        [ "$LEAN_PIN" = "true" ] && flags+=(--pin)
+        bash "$GITHUB_ACTION_PATH/install.sh" "${flags[@]}"
