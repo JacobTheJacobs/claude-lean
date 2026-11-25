@@ -113,7 +113,7 @@ def main():
     m.card("Claude Lean", ["Claude Code, about 20% cheaper and 24% faster. Same tasks solved.",
                        "No new instructions for Claude: only switches off what you pay for and don't use."], 2800)
     t = "~: bash"
-    L = m.typed([], "./install.sh", t)
+    L = m.typed([], "npx claude-lean init", t)
     m.out(L, capture(), t, ms=120, hold=2600)
 
     t = "3-prompt Claude Code chat, every request logged"
@@ -129,7 +129,7 @@ def main():
               "  plain Claude Code   20 / 33   $24.78    135 min",
               "  Claude Lean         20 / 33   $22.65    103 min (-24%)"], t, ms=300, hold=3600)
 
-    m.card("Same tasks solved. Lower bill.", ["./install.sh", "./install.sh --uninstall removes everything it added"], 3000)
+    m.card("Same tasks solved. Lower bill.", ["npx claude-lean init", "npx claude-lean uninstall removes everything it added"], 3000)
     (ROOT / "docs").mkdir(exist_ok=True)
     m.save(ROOT / "docs" / "demo.gif")
     print(f"{len(m.frames)} frames, {sum(m.durs) / 1000:.1f}s")
