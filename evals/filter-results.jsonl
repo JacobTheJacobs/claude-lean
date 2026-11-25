@@ -1,6 +1,0 @@
-{"arm": "boost", "rep": 0, "pass": true, "usd": 0.00555733, "turns": 3, "prompt": 138557, "seconds": 11.9, "error": false}
-{"arm": "filter", "rep": 0, "pass": true, "usd": 0.006018580000000001, "turns": 4, "prompt": 185111, "seconds": 13.8, "error": false}
-{"arm": "boost", "rep": 1, "pass": true, "usd": 0.00603413, "turns": 4, "prompt": 185121, "seconds": 14.3, "error": false}
-{"arm": "filter", "rep": 1, "pass": true, "usd": 0.00537132, "turns": 3, "prompt": 137223, "seconds": 11.9, "error": false}
-{"arm": "boost", "rep": 2, "pass": true, "usd": 0.005435580000000001, "turns": 3, "prompt": 137313, "seconds": 11.7, "error": false}
-{"arm": "filter", "rep": 2, "pass": true, "usd": 0.00555393, "turns": 3, "prompt": 138538, "seconds": 13.7, "error": false}

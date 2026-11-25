@@ -1,16 +1,13 @@
 {
   "name": "claude-lean",
-  "version": "0.2.8",
-  "description": "Make Claude Code cheaper without losing quality: 22% less on the THOL leaderboard tasks (35% on heavy ones), every task passing. Slim prompt, output budget, web search and read guards, MCP compaction, cost report. Open source, no telemetry.",
+  "version": "0.3.0",
+  "description": "Make Claude Code cheaper without changing how Claude works: background requests off, unused tool off, short skill descriptions, fast mode per session. SWE-bench Verified: same 20/33 solved, 24% faster. No new instructions for Claude, no telemetry.",
   "bin": {
     "claude-lean": "bin/cli.js"
   },
   "files": [
     "bin/",
     "hooks/",
-    "tools/",
-    "skills/",
-    "agents/",
     "install.sh",
     "README.md",
     "LICENSE",
@@ -38,9 +35,6 @@
     "cost",
     "prompt-caching",
     "context",
-    "hooks",
-    "mcp",
-    "agents",
     "claude-code-plugin",
     "developer-tools"
   ],

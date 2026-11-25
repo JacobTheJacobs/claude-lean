@@ -1,106 +1,45 @@
-<div align="center">
-
 # Claude Lean
 
-### Up to 61% cheaper than plain Claude Code.
-
-**61% cheaper and 3.6x faster on SWE-bench Lite. 22% cheaper on the public THOL leaderboard, every run passing.** One command, open source, no account, no telemetry.
-
-[![npm](https://img.shields.io/npm/v/claude-lean?color=cb3837&logo=npm)](https://www.npmjs.com/package/claude-lean)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/JacobTheJacobs/claude-lean/blob/master/LICENSE)
-[![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/FEATURES.md#security--privacy)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](https://github.com/JacobTheJacobs/claude-lean/blob/master/install.sh)
+[![Cost: ~20% cheaper](https://img.shields.io/badge/cost-~20%25%20cheaper-brightgreen)](#benchmark)
+[![SWE-bench Verified: 20/33, same as plain](https://img.shields.io/badge/SWE--bench%20Verified-20%2F33%20same%20as%20plain-brightgreen)](#benchmark)
+[![Time: -24%](https://img.shields.io/badge/time-%E2%88%9224%25-orange)](#benchmark)
 
-<img src="https://raw.githubusercontent.com/JacobTheJacobs/claude-lean/master/docs/demo.gif" alt="Terminal demo: npx claude-lean init installs the hooks; a 417-line pytest run is trimmed to 13 lines with the failure kept; claude-lean lite sends 5,442 tokens instead of 17,243 before you type." width="820">
+<img src="https://raw.githubusercontent.com/JacobTheJacobs/claude-lean/master/docs/demo.gif" alt="Terminal demo: the installer adds Claude Lean's settings; a 3-prompt chat sends 4 requests (~40K tokens) instead of 7 (~85K); SWE-bench Verified 20/33 solved like plain Claude Code in 103 instead of 135 minutes." width="820">
 
-</div>
+**Claude Code, about 20% cheaper and 24% faster. Same tasks solved.** No new instructions for Claude: Claude Lean only
+switches off what you pay for and don't use. Every saving below was measured; features without a measured saving say so.
 
-## Install
+- **SWE-bench Verified:** 20 of 33 solved, same as plain Claude Code, in 24% less time.
+- **Short chats:** half as much sent. A 3-prompt session went from 7 requests and ~85K tokens to 4 requests and ~40K
+  (-53%), with identical answers.
 
-```bash
-npx claude-lean init          # your next Claude Code session uses it; --dry-run to preview, uninstall to undo
+### Benchmark
+
+Real GitHub issues, graded by the official SWE-bench harness. 33 tasks, Sonnet 4.6, same prompt, one run per task.
+Plain Claude Code and Claude Lean each solved 20.
+
+Both solved the same 18 tasks plus one more each (plain: django-15973, Claude Lean: sphinx-7440); those two flip from run
+to run either way. The same task can cost 2-5x more from one run to the next, so one run gives a rough cost figure. The
+benchmark runs Claude without a chat window, so it doesn't include the background requests Claude Lean turns off in
+interactive sessions.
+
+| Feature | What it does | Measured |
+|---|---|---|
+| Background requests off | Turns off next-prompt suggestions, session titles, recaps, subagent progress summaries, idle compaction and idle check-ins. You lose the grey suggested-prompt text and auto tab titles. | 7 requests → 4; each suggestion re-sent the whole conversation |
+| ListAgents off | Removes a tool Claude almost never needs | ~500 tokens off every request |
+| Short skill descriptions | Caps each skill's description at 200 characters; skills still load in full when used | ~2,900 tokens off every request |
+| Fast mode per session | `/fast` stays on only for the session you turn it on in. Without this, Claude Code saves it and every later session runs in fast mode, which is billed at a higher rate. Answers are the same. | Not measured: fast mode's higher price is Anthropic's list price |
+| Cache warning | Warns you before Claude edits CLAUDE.md, AGENTS.md or a settings file, which re-writes the whole prompt cache | Warning only |
+| `--pin` | Turns off auto-updates. An update changes the prompt, re-writes the cache, and can quietly change what you pay. | Opt-in |
+| `--cache-1h` | 1-hour prompt cache. API keys only: a Claude subscription already gets 1 hour. 1-hour cache writes cost more. | Opt-in |
+
+Measured and left out (no saving on SWE-bench or in 30 days of real sessions): output filter for test/build
+commands, unchanged re-read note, MCP result compaction, blocking generated files. Also left out: free web search (Google via `agy`, or free engines). On a THOL web-research run agy's quota ran out after 22 searches and most free engines blocked repeated searches, so the paid search ran anyway.
+
 ```
-
-Or as a Claude Code plugin (no output filter, deny rules or status line; plugins can't add those):
-
+npx claude-lean init [--pin] [--cache-1h]   # install (backs up ~/.claude/settings.json; never overrides your own values)
+npx claude-lean uninstall                   # remove everything Claude Lean added
+npx claude-lean doctor                      # check the install
 ```
-/plugin marketplace add JacobTheJacobs/claude-lean
-/plugin install lean@claude-lean
-/lean:slim on
-```
-
-Needs Python 3.8+ (macOS, Linux, WSL) and Node 18+ for `npx`. Install it one way, not both.
-
-## Results
-
-### SWE-bench: plain Claude Code vs Claude Lean
-
-Real GitHub issues, graded by the official SWE-bench harness. Sonnet 4.6, same prompt, one run per task.
-
-| | Tasks | Solved, plain / Lean | Cost, plain / Lean | Time, plain / Lean |
-|---|--:|--:|--:|--:|
-| SWE-bench Lite | 10 | 6 / 5 | $10.17 / **$3.99 (-61%)** | 76 / **21 min** |
-| SWE-bench Verified | 33 | 20 / 20 | $24.78 / $25.38 (+2%, even) | 135 / 137 min |
-| **Total** | **43** | **26 / 25** | **$34.95 / $29.37 (-16%)** | **211 / 158 min** |
-
-Lean was cheaper on 19 of the 33 Verified tasks, but a few long runs on hard tasks evened out the total. The same task
-can cost 2-5x more from one run to the next. Two rules added in 0.2.8 fixed 2 of the tasks Lean missed (django-15973,
-sphinx-8548). Details: [docs/BENCHMARKS.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/BENCHMARKS.md#swe-bench).
-
-### THOL: every token-saving tool on the board
-
-[THOL](https://github.com/pi-infected/token-harness-optimizer-leaderboard), the public token-optimizer leaderboard: 17 real tasks on Sonnet 4.6, cost vs plain Claude Code (minus = cheaper).
-
-| Tool | Short tasks (10) | Heavy tasks (7) | All 17 | Runs passed |
-|---|--:|--:|--:|--:|
-| **Claude Lean** (0.2.5) * | **-12.5%** | -34.7% | -22.4% | 51/51 |
-| tokenade (0.8.13) | -9.9% | **-38.9%** | **-23.2%** | 170/170 |
-| claude-token-efficient | +0.3% | -11.6% | -4.8% | 170/170 |
-| ponytail | -4.7% | -3.5% | -4.2% | 170/170 |
-| caveman (v1.9.0) | +7.2% | -13.6% | -1.9% | 170/170 |
-| graphify | +0.8% | -3.3% | -0.9% | 170/170 |
-| edgee | +13.6% | -14.7% | +0.9% | 169/170 |
-| squeez | +7.0% | -6.9% | +1.0% | 170/170 |
-| code-review-graph | +8.5% | -8.5% | +1.1% | 170/170 |
-| codegraph | +14.7% | -7.6% | +4.9% | 170/170 |
-| rtk (v0.42.3) | +3.9% | +7.1% | +5.2% | 170/170 |
-| lean-ctx | +33.6% | +10.3% | +23.4% | 170/170 |
-| headroom | +57.7% | +52.8% | +55.7% | 170/170 |
-
-\* Our run of the same harness and tasks, 3 runs per task; every other row is the board as published. Lean and tokenade are within noise of each other.
-
-Our own evals (Haiku 5.5, 238 graded tasks, all passed): `claude-lean lite` -57% short / -34% long / -60% noisy builds. **All benchmarks, including the ones that went against us: [docs/BENCHMARKS.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/BENCHMARKS.md).**
-
-## What it does
-
-| | |
-|---|---|
-| **Slim prompt** | Turns off 6 Claude Code features most sessions never use, in every request. `lite` starts with core tools only. |
-| **Output budget** | ~300 tokens of rules: root cause first, smallest general change, short answers, no subagent fan-out, batch tool calls, narrow tests. |
-| **Web search** | Serves searches from public engines and GitHub instead of the paid WebSearch request; caps paid searches at 15. |
-| **Reads** | Pauses huge file reads once; an unchanged re-read becomes a one-line note; skips `node_modules` and minified files. |
-| **Tool output** | Trims noisy test/build logs (originals kept), compacts MCP JSON, notes repeated failures. |
-| **Long sessions** | Better compaction summaries; notes when the cache expired; handoff notes across `/clear`. |
-| **See the cost** | Status line, `report` (by model, project, session, tool), `audit` (unused skills/MCP, hidden context, broken hooks), daily cap. |
-
-Every feature, setting and off switch: [docs/FEATURES.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/FEATURES.md). Every cost lever we know of: [docs/COST-MAP.md](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/COST-MAP.md).
-
-## Commands
-
-```bash
-npx claude-lean report --days 7    # where your money went
-npx claude-lean audit              # unused skills and MCP servers, hidden context, broken hooks
-npx claude-lean lite               # Claude Code with core tools only, for quick jobs
-npx claude-lean uninstall          # removes exactly what it added
-```
-
-## FAQ
-
-**Does it lower quality?** Barely, in what we measured: all 51 THOL runs passed; on SWE-bench Lean solved 25 of 43 tasks to plain's 26. Every hook has an off switch.
-
-**Does anything leave my machine?** Only web search queries, sent to public search engines and GitHub instead of Anthropic's search. `LEAN_WEB_SEARCH=0` turns that off. No telemetry. Details: [privacy](https://github.com/JacobTheJacobs/claude-lean/blob/master/docs/FEATURES.md#security--privacy).
-
-**Why is my bill high when Claude writes so little?** Every request re-reads the whole context. Claude Lean makes that context smaller.
-
-## License
-
-MIT. Built by [JacobTheJacobs](https://github.com/JacobTheJacobs) with [Claude Code](https://claude.com/claude-code). [Changelog](https://github.com/JacobTheJacobs/claude-lean/blob/master/CHANGELOG.md) · [Contributing](https://github.com/JacobTheJacobs/claude-lean/blob/master/CONTRIBUTING.md) · [Issues](https://github.com/JacobTheJacobs/claude-lean/issues)

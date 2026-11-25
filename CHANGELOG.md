@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+Rewrite: only changes that leave Claude's instructions and tool output alone, each measured.
+- Kept: hidden background requests off (prompt suggestions, titles, recaps, progress summaries, idle compaction and check-ins), ListAgents off, skill descriptions capped at 200 characters, fast mode per session, a warning before edits that re-write the prompt cache, opt-in `--pin` and `--cache-1h`.
+- Removed: output budget and coding rules (cost +14% and lost solves on SWE-bench Verified), output filter, read and web guards, MCP compaction, slim, lite, report, audit, memory, stats, get, status line, skills and agents. `init` uninstalls an earlier version first.
+- SWE-bench Verified (33 tasks, Sonnet 4.6, Claude Code 2.1.330): 20 solved like plain Claude Code, $22.65 vs $24.78, 103 vs 135 minutes.
+
 ## [0.2.8] - 2026-11-24
 
 ### Changed

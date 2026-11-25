@@ -1,164 +1,126 @@
 #!/usr/bin/env bash
-# Claude Lean installer. Wires everything into ~/.claude for you (backup first, idempotent).
-#   ./install.sh               lean skill + long-session guard + output budget + output filter + cache guard +
-#                              web search, read, MCP, retry-loop and compaction hooks
-#   ./install.sh --reader      also the Haiku reader agent (adds ~550 tokens per request; pays off on bulky lookups)
-#   ./install.sh --no-filter   skip the output filter (hooks/squeeze_hook.py)
-#   ./install.sh --no-terse    skip the output rules (smallest change, 1-3 line answers); keeps the no-subagent-fan-out rule
-#   ./install.sh --no-deny     let Claude read node_modules, minified files and source maps (denied by default: they
-#                              are large, generated, and almost never what Claude needs)
-#   ./install.sh --no-statusline  don't add the cost status line (it's only added when you have no status line)
-#   ./install.sh --no-slim     keep Claude Code's Artifact, Workflow, cron, background-task and advisor tools, the
-#                              Explore/Plan agents, the ListAgents tool and full skill descriptions in every request
-#   ./install.sh --dry-run     show every change, write nothing
-#   ./install.sh --uninstall   remove everything Claude Lean added
-# Env: CLAUDE_DIR (default $CLAUDE_CONFIG_DIR, else ~/.claude), LEAN_DAY_USD=N adds the daily dollar cap hook (N dollars per day).
+# Claude Lean installer (backs up settings.json first; safe to re-run).
+#   ./install.sh              turns off Claude Code's hidden background requests off (next-prompt suggestions, session titles,
+#                             recaps, subagent progress summaries, idle compaction and check-ins), turns off the
+#                             ListAgents tool, caps skill descriptions at 200 characters and warns before edits that
+#                             break the prompt cache; fast mode (/fast) lasts only the session it was turned on in
+#   ./install.sh --pin        also turn off Claude Code auto-updates (an update changes the prompt and re-writes the cache)
+#   ./install.sh --cache-1h   also keep the prompt cache 1 hour instead of 5 minutes (API keys only; a Claude
+#                             subscription already gets 1 hour; 1-hour cache writes cost more, so it pays only if you
+#                             often pause 5-60 minutes)
+#   ./install.sh --uninstall  remove everything Claude Lean added
+# Env: CLAUDE_CONFIG_DIR (default ~/.claude).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 exec python3 - "$HERE" "$@" <<'PY'
-import json, os, re, shlex, shutil, sys, time
+import json, os, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
-unknown = args - {"--reader", "--no-filter", "--no-slim", "--no-terse", "--no-deny", "--no-statusline", "--dry-run", "--uninstall", "-h", "--help"}
-if unknown or args & {"-h", "--help"}:
-    print(open(here / "install.sh").read().split("set -euo")[0].replace("# ", "").strip())
-    sys.exit(1 if unknown else 0)
-dry, un = "--dry-run" in args, "--uninstall" in args
-cdir = Path(os.environ.get("CLAUDE_DIR") or os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
-settings_f = cdir / "settings.json"
-py = lambda p: f"python3 {shlex.quote(str(here / p))}"    # quoted: home folders can contain spaces
-
-hooks = {"UserPromptSubmit": [("", py("hooks/session_guard.py"))],
-         "SessionStart": [("", py("hooks/handoff_hook.py"))],
-         # output budget: a few standing rules so Claude writes less (output costs several times input)
-         "PreToolUse": [("Edit|Write|MultiEdit", py("hooks/cache_guard.py")),
-                        ("WebSearch|WebFetch", py("hooks/web_guard.py")),    # web search budget: ~$0.07 per search
-                        ("Read|Bash", py("hooks/read_guard.py"))],  # large-file read or cat: ask for a range first
-         "PostToolUse": [("Read", py("hooks/read_guard.py")),       # identical re-read -> one-line note
-                         ("mcp__.*", py("hooks/mcp_compact.py"))],  # MCP JSON: drop nulls/empties, minify
-         "PostToolUseFailure": [("Bash|Edit|MultiEdit", py("hooks/loop_guard.py"))],  # same failure 3x -> change approach
-         "PreCompact": [("", py("hooks/compact_hook.py"))]}         # what the compaction summary keeps
-# --no-terse keeps only the no-subagent-fan-out rule (slim alone made Claude fan out to 9-10 subagents)
-hooks["SessionStart"].append(("startup|clear|compact", ("LEAN_TERSE=0 " if "--no-terse" in args else "") + py("hooks/terse_hook.py")))
-if "--no-filter" not in args:
-    hooks["PreToolUse"].append(("Bash", py("hooks/squeeze_hook.py")))
-if os.environ.get("LEAN_DAY_USD"):
-    cap = float(os.environ["LEAN_DAY_USD"])          # baked into the hook command: hooks don't see your shell env
-    hooks["UserPromptSubmit"].append(("", f"LEAN_DAY_USD={cap:g} " + py("hooks/budget.py")))
-allow = [f"Bash({py('tools/squeeze.py')} *)"] if "--no-filter" not in args else []
-DENY = ["Read(**/node_modules/**)", "Read(**/*.min.js)", "Read(**/*.min.css)", "Read(**/*.map)"]
-DENY_MARK = "CLAUDE_LEAN_DENY"            # env key recording which deny rules we added, so uninstall removes only those
-sys.path.insert(0, str(here / "tools"))
-import slim                       # SLIM switches and how they are added/removed (also /lean:slim in the plugin)
-copies = [(here / "skills/lean/SKILL.md", cdir / "skills/lean/SKILL.md"),
-          (here / "skills/handoff/SKILL.md", cdir / "skills/handoff/SKILL.md")]
-if "--reader" in args:
-    copies.append((here / "agents/reader.md", cdir / "agents/reader.md"))
-
-def say(msg):
-    print(("[dry-run] " if dry else "") + msg)
-
+if args - {"--pin", "--cache-1h", "--uninstall"} or ("--uninstall" in args and len(args) > 1):
+    sys.exit("usage: install.sh [--pin] [--cache-1h] | --uninstall")
+un = "--uninstall" in args
+f = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "settings.json"
 try:
-    s = json.loads(settings_f.read_text()) if settings_f.exists() else {}
+    s = json.loads(f.read_text()) if f.exists() else {}
 except ValueError:
-    sys.exit(f"{settings_f} is not valid JSON; fix it first.")
-if bad := slim.bad_shape(s):
-    sys.exit(f"{settings_f}: {bad}; fix it first.")
+    sys.exit(f"{f} is not valid JSON; fix it first.")
+if not isinstance(s, dict) or not all(isinstance(s.get(k, {}), dict) for k in ("hooks", "env", "permissions")) \
+        or not isinstance(s.get("permissions", {}).get("deny", []), list):
+    sys.exit(f"{f}: unexpected shape (hooks, env and permissions must be objects, permissions.deny a list); fix it first.")
 before = json.dumps(s, sort_keys=True)
-# ours: this copy's files, or the same file in another Lean folder (.claude-lean, claude-lean, a claude-boost clone)
-# left by an earlier install; else every hook runs twice and the status line points at the old copy
-names = "|".join(re.escape(p.name) for p in (here / "hooks").glob("*.py"))
-def mine(cmd, sub=f"hooks/(?:{names})"):
-    return (str(here) in cmd and re.search(sub, cmd) is not None) or \
-        re.search(rf"(?:^|[/'\"])\.?claude-(?:lean|boost)/{sub}\b", cmd) is not None
+HOOKS = {"cache_guard.py": "Edit|Write|MultiEdit"}
+OLD = ["agy_search.py", "web_guard.py"]   # hooks earlier versions installed
+MARK = "CLAUDE_LEAN_V2_ADDED"   # env key listing the settings we added, so uninstall removes only those
+OLD_MARK = "BOOSTV2_ADDED"       # same, written by earlier versions
+TAG = "# claude-lean-v2"   # ends every hook command we write, so a re-install finds them wherever the folder was
 
-# always strip our old entries first, so re-running updates paths and options cleanly
-for ev, groups in list(s.get("hooks", {}).items()):
-    for g in groups:
-        g["hooks"] = [h for h in g.get("hooks", []) if not mine(h.get("command", ""))]
-    s["hooks"][ev] = [g for g in groups if g["hooks"]]
-    if not s["hooks"][ev]:
-        del s["hooks"][ev]
-if "hooks" in s and not s["hooks"]:
-    del s["hooks"]
-slim.strip(s)
-ours = (s.get("env", {}).pop(DENY_MARK, "") or "").split("|")
-if "env" in s and not s["env"]:
-    del s["env"]
-if mine(json.dumps(s.get("statusLine", "")), r"tools/statusline\.py"):
-    del s["statusLine"]                     # ours: re-added below unless uninstalling or --no-statusline
-perm = s.get("permissions", {})
-if "deny" in perm:
-    perm["deny"] = [r for r in perm["deny"] if r not in ours]
-    if not perm["deny"]:
-        del perm["deny"]
-if "allow" in perm:
-    perm["allow"] = [r for r in perm["allow"] if not mine(r, r"tools/squeeze\.py")]
-    if not perm["allow"]:
-        del perm["allow"]
-if "permissions" in s and not s["permissions"]:
-    del s["permissions"]
 
+def cmd(name):
+    """Runs the hook if it is still there and never blocks the tool: a moved or deleted checkout would otherwise make
+    python3 exit 2, which Claude Code reads as 'block this Edit/Write'."""
+    p = shlex.quote(str(here / "hooks" / name))
+    return f"test -f {p} && python3 {p}; exit 0 {TAG}"
+
+
+# ours: commands carrying our tag, or an earlier install's (no tag; recognised by the boostv2 folder)
+ours = lambda c: c.endswith(TAG) or any(f"boostv2/hooks/{n}" in c for n in [*HOOKS, *OLD])
+
+# strip our previous install first, so re-running updates paths and options cleanly
+pre = s.get("hooks", {}).get("PreToolUse", [])
+for g in pre:
+    g["hooks"] = [h for h in g.get("hooks", []) if not ours(h.get("command", ""))]
+pre = [g for g in pre if g["hooks"]]
+env = s.get("env", {})
+deny = s.get("permissions", {}).get("deny", [])
+
+# Measured 2026-11-25 (Claude Code 2.1.330, logging proxy):
+#  - background requests off: a 3-prompt session sent 7 requests (~85K tokens), 4 (~50K) without them;
+#    the extra ones were next-prompt suggestions (full context each) and a session-title request
+#  - ListAgents denied: ~500 tokens off every request; skill descriptions capped at 200 chars: ~2,900 off every request
+ENV = {"CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION": "false", "CLAUDE_CODE_ENABLE_AWAY_SUMMARY": "0",
+       "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "1", "CLAUDE_CODE_DISABLE_AGENT_PROGRESS_SUMMARIES": "1",
+       "CLAUDE_CODE_GOAL_CHECKIN_MINUTES": "0"}
+SETTINGS = {"idleCompaction": False, "skillListingMaxDescChars": 200,
+            "fastModePerSessionOptIn": True}   # /fast lasts one session, so a forgotten fast mode stops costing more
+DENY = ["ListAgents"]
+
+# remove what we added before, but only where it still holds our value: a value the user changed since is theirs now
+ALL_ENV = {**ENV, "DISABLE_AUTOUPDATER": "1"}
+ALL_SETTINGS = {**SETTINGS, "promptCacheTtl": "1h"}
+for item in filter(None, ",".join([env.pop(OLD_MARK, ""), env.pop(MARK, "")]).split(",")):
+    kind, _, key = item.partition(":")
+    if kind == "env" and key in ALL_ENV and env.get(key) == ALL_ENV[key]:
+        env.pop(key)
+    elif kind == "setting" and key in ALL_SETTINGS and s.get(key) == ALL_SETTINGS[key]:
+        s.pop(key)
+    elif kind == "deny" and key in deny:
+        deny.remove(key)
+
+added = []
 if not un:
-    for ev, items in hooks.items():
-        for matcher, cmd in items:
-            g = {"hooks": [{"type": "command", "command": cmd}]}
-            if matcher:
-                g = {"matcher": matcher, **g}
-            s.setdefault("hooks", {}).setdefault(ev, []).append(g)
-            say(f"hook   {ev:<17} {matcher or '*':<20} {cmd.split('/')[-1]}")
-    if "--no-slim" not in args:
-        if (added := slim.add(s)):
-            say(f"slim   {', '.join(added)}")
-    for r in allow:
-        s.setdefault("permissions", {}).setdefault("allow", []).append(r)
-        say(f"allow  {r}")
-    if "--no-statusline" not in args and "statusLine" not in s:
-        s["statusLine"] = {"type": "command", "command": py("tools/statusline.py")}
-        say("status line: session cost, context, cache hit rate")
-    if "--no-deny" not in args:
-        have = s.setdefault("permissions", {}).setdefault("deny", [])
-        added = [r for r in DENY if r not in have]
-        have.extend(added)
-        if added:
-            s.setdefault("env", {})[DENY_MARK] = "|".join(added)
-            say(f"deny   {', '.join(added)}")
+    pre += [{"matcher": m, "hooks": [{"type": "command", "command": cmd(n)}]} for n, m in HOOKS.items()]
+    if "--pin" in args:
+        ENV["DISABLE_AUTOUPDATER"] = "1"
+    if "--cache-1h" in args:
+        SETTINGS["promptCacheTtl"] = "1h"
+    for k, v in ENV.items():          # never override a value the user set themselves
+        if k not in env:
+            env[k] = v
+            added.append(f"env:{k}")
+    for k, v in SETTINGS.items():
+        if k not in s:
+            s[k] = v
+            added.append(f"setting:{k}")
+    for r in DENY:
+        if r not in deny:
+            deny.append(r)
+            added.append(f"deny:{r}")
+    if added:
+        env[MARK] = ",".join(added)
+if deny:
+    s.setdefault("permissions", {})["deny"] = deny
+elif "permissions" in s:
+    s["permissions"].pop("deny", None)
+    if not s["permissions"]:
+        del s["permissions"]
+
+if pre:
+    s.setdefault("hooks", {})["PreToolUse"] = pre
+elif "hooks" in s:
+    s["hooks"].pop("PreToolUse", None)
+for k in ("hooks", "env"):
+    if k in s and not s[k]:
+        del s[k]
+if env:
+    s["env"] = env
 
 if json.dumps(s, sort_keys=True) != before:
-    if not dry:
-        cdir.mkdir(parents=True, exist_ok=True)
-        if settings_f.exists():
-            bak = settings_f.with_suffix(f".json.lean-{time.strftime('%Y%m%d-%H%M%S')}.bak")
-            shutil.copy2(settings_f, bak)
-            print(f"backup {bak}")
-        settings_f.write_text(json.dumps(s, indent=2) + "\n")
-    say(f"wrote  {settings_f}")
-
-for src, dst in copies:
-    if un:
-        if dst.exists():
-            say(f"remove {dst}")
-            if not dry:
-                dst.unlink()
-                if dst.parent.name in ("lean", "handoff") and not any(dst.parent.iterdir()):
-                    dst.parent.rmdir()
-    else:
-        say(f"copy   {dst}")
-        if not dry:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_text(src.read_text().replace("${CLAUDE_PLUGIN_ROOT}", str(here)))
-if un and (cdir / "agents/reader.md").exists() and "--reader" not in args:
-    print(f"left   {cdir / 'agents/reader.md'} (pass --reader to remove it too)")
-
-if not un and os.environ.get("LEAN_VIA_NPX"):
-    print("\nDone. Hooks apply to new Claude Code sessions.\n"
-          "  savings report:  npx claude-lean report --days 7\n"
-          "  filter stats:    npx claude-lean stats\n"
-          "  undo:            npx claude-lean uninstall")
-elif not un:
-    print(f"\nDone. Hooks apply to new Claude Code sessions.\n"
-          f"  savings report:  {py('tools/report.py')} --days 7\n"
-          f"  filter stats:    {py('tools/squeeze.py')} stats\n"
-          f"  undo:            {here}/install.sh --uninstall")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    if f.exists():
+        bak = f.with_suffix(f".json.claude-lean-{time.strftime('%Y%m%d-%H%M%S')}.bak")
+        shutil.copy2(f, bak)
+        print(f"backup {bak}")
+    f.write_text(json.dumps(s, indent=2) + "\n")
+print(("removed Claude Lean from" if un else "installed Claude Lean in") + f" {f}" + (f" (+ {', '.join(added)})" if added else ""))
 PY

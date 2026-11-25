@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Render docs/demo.gif from real claude-lean output (needs Pillow and DejaVu Sans Mono).
+"""Render docs/demo.gif (needs Pillow and DejaVu Sans Mono).
 
     python3 docs/make_demo.py
 
-Every terminal frame is captured live: `init` runs into a throwaway folder and the pytest scene runs tools/squeeze.py on
-a generated 400-test log. The numbers on the cards come from the README's benchmark tables."""
+The install scene is captured live (install.sh into a throwaway config dir). The request counts and the benchmark come
+from the README's measured tables."""
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -25,32 +24,18 @@ DOTS = ("#ff5f57", "#febc2e", "#28c840")
 
 def capture():
     with tempfile.TemporaryDirectory() as t:
-        env = {**os.environ, "LEAN_HOME": f"{t}/lean", "CLAUDE_DIR": f"{t}/claude", "LEAN_CACHE": f"{t}/cache"}
-        init = subprocess.run(["node", str(ROOT / "bin" / "cli.js"), "init"], env=env, capture_output=True, text=True).stdout
-        init = init.replace(f"{t}/lean", "~/.claude-lean").replace(f"{t}/claude", "~/.claude")
-        log = ["============================= test session starts ==============================",
-               "platform linux -- Python 3.12.3, pytest-8.3.4", "collected 400 items", ""]
-        log += [f"tests/test_shop.py::test_case_{i} PASSED{'':>30}[{i * 100 // 400:>3}%]" for i in range(399)]
-        log += ["tests/test_shop.py::test_parse_price FAILED                              [100%]", "",
-                "=================================== FAILURES ===================================",
-                "______________________________ test_parse_price _______________________________", "",
-                "    def test_parse_price():", ">       assert parse_price('$1,234.50') == 1234.5",
-                "E       AssertionError: assert 1.0 == 1234.5", "", "tests/test_shop.py:41: AssertionError",
-                "=========================== short test summary info ============================",
-                "FAILED tests/test_shop.py::test_parse_price - AssertionError: assert 1.0 == 1234.5",
-                "======================== 1 failed, 399 passed in 2.31s ========================="]
-        trim = subprocess.run([sys.executable, str(ROOT / "tools" / "squeeze.py"), "filter", "pytest"], env=env,
-                              input="\n".join(log) + "\n", capture_output=True, text=True).stdout
-        trim = trim.replace(str(ROOT / "tools"), "~/.claude-lean/tools")
-    return init.rstrip("\n").split("\n"), trim.rstrip("\n").split("\n")
+        out = subprocess.run(["bash", str(ROOT / "install.sh")], env={**os.environ, "CLAUDE_CONFIG_DIR": t},
+                             capture_output=True, text=True, check=True).stdout
+        out = out.replace(t, "~/.claude")
+    line = out.strip().split("\n")[-1] if "note:" not in out else out.strip().split("\n")[0]
+    head, _, added = line.partition(" (+ ")
+    return [head] + [f"  + {a}" for a in added.rstrip(")").split(", ") if a]
 
 
 def color(line):
-    if "Claude Lean" in line or "squeeze.py get" in line:
+    if "Claude Lean" in line and not line.startswith("$"):
         return ACC
-    if "FAILED" in line or line.startswith("E ") or "Error" in line:
-        return RED
-    if line.startswith(("hook", "env", "allow", "wrote", "copy", "copied")):
+    if line.startswith("  + ") or "-53%" in line or "-24%" in line:
         return GRN
     if line.startswith("  "):
         return DIM
@@ -94,10 +79,9 @@ class Movie:
         self.add(render(lines + ["$ " + cmd], title, True), 350)
         return lines + ["$ " + cmd]
 
-    def out(self, lines, new, title, step=1, ms=40, hold=1800):
-        new = [w for ln in new for w in ([ln[i:i + 100] for i in range(0, len(ln), 100)] or [""])]
-        for i in range(0, len(new), step):
-            self.add(render(lines + new[:i + step], title), ms)
+    def out(self, lines, new, title, ms=40, hold=1800):
+        for i in range(len(new)):
+            self.add(render(lines + new[:i + 1], title), ms)
         self.add(render(lines + new, title), hold)
         return lines + new
 
@@ -125,40 +109,28 @@ class Movie:
 
 
 def main():
-    init, trim = capture()
     m = Movie()
-    m.card("Claude Lean", ["22% cheaper than plain Claude Code on the THOL leaderboard tasks,",
-                           "35% on the heavy ones. Every task passing. Open source, no telemetry."], 2600)
-    t = "~/shop: bash"
-    L = m.typed([], "npx claude-lean init", t)
-    m.out(L, init, t, ms=60, hold=2200)
+    m.card("Claude Lean", ["Claude Code, about 20% cheaper and 24% faster. Same tasks solved.",
+                       "No new instructions for Claude: only switches off what you pay for and don't use."], 2800)
+    t = "~: bash"
+    L = m.typed([], "./install.sh", t)
+    m.out(L, capture(), t, ms=120, hold=2600)
 
-    t = "Claude Code: Bash tool output"
-    noisy = [f"tests/test_shop.py::test_case_{i} PASSED{'':>30}[{i * 100 // 400:>3}%]" for i in range(0, 399, 7)]
-    L = m.typed([], "pytest", t)
-    L = m.out(L, ["collected 400 items"] + noisy, t, step=3, ms=30, hold=300)
-    m.out(L, ["", "  ... 416 lines, and every later request in this session carries them"], t, hold=1400)
-    L = m.typed([], "pytest      # with Claude Lean", t)
-    m.out(L, trim, t, ms=70, hold=3200)
+    t = "3-prompt Claude Code chat, every request logged"
+    L = m.typed([], "requests sent", t)
+    m.out(L, ["", "  plain Claude Code   7 requests   ~85K tokens",
+              "    3 answers + 2 next-prompt suggestions (whole chat each) + title + quota check",
+              "", "  Claude Lean         4 requests   ~40K tokens   (-53%)",
+              "    3 answers + quota check, same answers"], t, ms=300, hold=3400)
 
-    t = "~/shop: bash"
-    L = m.typed([], "npx claude-lean lite    # quick jobs: core tools only", t)
-    m.out(L, ["", "  tokens sent before you type anything (clean install, Claude Code 2.1.239)",
-              "  plain Claude Code   17,243",
-              "  claude-lean lite     5,442   (-68%)"], t, ms=250, hold=3000)
+    t = "SWE-bench Verified: 33 real GitHub issues, official grader"
+    L = m.typed([], "results", t)
+    m.out(L, ["", "                      solved    cost      time",
+              "  plain Claude Code   20 / 33   $24.78    135 min",
+              "  Claude Lean         20 / 33   $22.65    103 min (-24%)"], t, ms=300, hold=3600)
 
-    t = "Claude Code: WebSearch"
-    L = m.typed([], 'WebSearch("kv cache compression github")', t)
-    import sys
-    sys.path.insert(0, str(ROOT / "hooks"))
-    import web_guard
-    hits = web_guard.own_search("kv cache compression github", [])[:5]
-    m.out(L, ["", "  served by the Claude Lean hook: no paid search request"] +
-          [f"  {i}. {h[0][:70]}" for i, h in enumerate(hits, 1)] +
-          ["", "  THOL web research: $3.13 -> $1.70 per run, same score"], t, ms=200, hold=3200)
-
-    m.card("THOL: cost vs plain Claude Code", ["Claude Lean +22.4%   tokenade +23.2%   claude-token-efficient +4.8%",
-                                               "ponytail +4.2%   caveman +1.9%   rtk -5.2%      npx claude-lean init"], 3800)
+    m.card("Same tasks solved. Lower bill.", ["./install.sh", "./install.sh --uninstall removes everything it added"], 3000)
+    (ROOT / "docs").mkdir(exist_ok=True)
     m.save(ROOT / "docs" / "demo.gif")
     print(f"{len(m.frames)} frames, {sum(m.durs) / 1000:.1f}s")
 
