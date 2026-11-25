@@ -17,4 +17,4 @@ npm test          # python3 -m unittest discover -s tests && node --test tests/c
 
 ## Release
 
-Bump `version` in `package.json`, add a `CHANGELOG.md` section, merge, then push the tag `vX.Y.Z`.
+Bump `version` in `package.json`, add a `CHANGELOG.md` section, merge, push, run `npm publish`, then create the `vX.Y.Z` release on GitHub.
