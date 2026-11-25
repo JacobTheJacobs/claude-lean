@@ -9,7 +9,7 @@
 <img src="https://raw.githubusercontent.com/JacobTheJacobs/claude-lean/master/docs/demo.gif" alt="Terminal demo: the installer adds Claude Lean's settings; a 3-prompt chat sends 4 requests (~40K tokens) instead of 7 (~85K); SWE-bench Verified 20/33 solved like plain Claude Code in 103 instead of 135 minutes." width="820">
 
 **Claude Code, about 20% cheaper and 24% faster. Same tasks solved.** No new instructions for Claude: Claude Lean only
-switches off what you pay for and don't use. Every saving below was measured; features without a measured saving say so.
+switches off what you pay for and don't use. Every saving below was measured; features without a measured saving say so. One command, open source, no account, no telemetry.
 
 - **SWE-bench Verified:** 20 of 33 solved, same as plain Claude Code, in 24% less time.
 - **Short chats:** half as much sent. A 3-prompt session went from 7 requests and ~85K tokens to 4 requests and ~40K
