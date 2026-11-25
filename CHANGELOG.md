@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0
+## [0.3.0] - 2026-11-25
 
 Rewrite: only changes that leave Claude's instructions and tool output alone, each measured.
 - Kept: hidden background requests off (prompt suggestions, titles, recaps, progress summaries, idle compaction and check-ins), ListAgents off, skill descriptions capped at 200 characters, fast mode per session, a warning before edits that re-write the prompt cache, opt-in `--pin` and `--cache-1h`.
