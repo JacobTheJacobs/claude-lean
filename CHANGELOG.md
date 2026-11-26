@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.1] - 2026-11-26
+
+README only: rewritten for new readers; adds the THOL result (51/51 passed, 12% cheaper, local run) and the SWE-bench cost.
+
 ## [0.3.0] - 2026-11-25
 
 Rewrite: only changes that leave Claude's instructions and tool output alone, each measured.
