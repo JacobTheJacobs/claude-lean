@@ -36,7 +36,7 @@ interactive sessions.
 | `--cache-1h` | 1-hour prompt cache. API keys only: a Claude subscription already gets 1 hour. 1-hour cache writes cost more. | Opt-in |
 
 Measured and left out (no saving on SWE-bench or in 30 days of real sessions): output filter for test/build
-commands, unchanged re-read note, MCP result compaction, blocking generated files. Also left out: free web search (Google via `agy`, or free engines). On a THOL web-research run agy's quota ran out after 22 searches and most free engines blocked repeated searches, so the paid search ran anyway.
+commands, unchanged re-read note, MCP result compaction, blocking generated files.
 
 ```
 npx claude-lean init [--pin] [--cache-1h]   # install (backs up ~/.claude/settings.json; never overrides your own values)
