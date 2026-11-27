@@ -4,6 +4,8 @@
 #                             recaps, subagent progress summaries, idle compaction and check-ins), turns off the
 #                             ListAgents tool, caps skill descriptions at 200 characters and warns before edits that
 #                             break the prompt cache; fast mode (/fast) lasts only the session it was turned on in
+#   ./install.sh --background-only   only the background requests (the env switches and idleCompaction): nothing
+#                             Claude sees changes (tools, skill list, hooks and fast mode are left alone)
 #   ./install.sh --pin        also turn off Claude Code auto-updates (an update changes the prompt and re-writes the cache)
 #   ./install.sh --cache-1h   also keep the prompt cache 1 hour instead of 5 minutes (API keys only; a Claude
 #                             subscription already gets 1 hour; 1-hour cache writes cost more, so it pays only if you
@@ -17,8 +19,8 @@ import json, os, shlex, shutil, sys, time
 from pathlib import Path
 
 here, args = Path(sys.argv[1]), set(sys.argv[2:])
-if args - {"--pin", "--cache-1h", "--uninstall"} or ("--uninstall" in args and len(args) > 1):
-    sys.exit("usage: install.sh [--pin] [--cache-1h] | --uninstall")
+if args - {"--pin", "--cache-1h", "--background-only", "--uninstall"} or ("--uninstall" in args and len(args) > 1):
+    sys.exit("usage: install.sh [--background-only] [--pin] [--cache-1h] | --uninstall")
 un = "--uninstall" in args
 f = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "settings.json"
 try:
@@ -78,6 +80,9 @@ for item in filter(None, ",".join([env.pop(OLD_MARK, ""), env.pop(MARK, "")]).sp
         deny.remove(key)
 
 added = []
+if "--background-only" in args:     # leave everything Claude itself sees untouched
+    HOOKS, DENY = {}, []
+    SETTINGS = {"idleCompaction": False}
 if not un:
     pre += [{"matcher": m, "hooks": [{"type": "command", "command": cmd(n)}]} for n, m in HOOKS.items()]
     if "--pin" in args:

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.2] - 2026-11-27
+
+- `init --background-only`: install only the background-request switches (5 env vars and `idleCompaction: false`).
+  Claude's tools, skill list, hooks and fast mode are left alone. Re-running with or without it switches cleanly.
+
 ## [0.3.1] - 2026-11-26
 
 README only: rewritten for new readers; adds the THOL result (51/51 passed, 12% cheaper, local run) and the SWE-bench cost.

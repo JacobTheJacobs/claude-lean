@@ -89,6 +89,16 @@ class Install(unittest.TestCase):
             self.assertEqual((s["skillListingMaxDescChars"], s["permissions"]["deny"]), (500, ["ListAgents"]))
             self.assertEqual(self.run_install(cfg, "--uninstall"), mine)
 
+    def test_background_only(self):
+        with tempfile.TemporaryDirectory() as cfg:
+            s = self.run_install(cfg)                                  # full install first, then switch
+            s = self.run_install(cfg, "--background-only")
+            self.assertEqual(s["env"]["CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION"], "false")
+            self.assertIs(s["idleCompaction"], False)
+            for k in ("hooks", "permissions", "skillListingMaxDescChars", "fastModePerSessionOptIn"):
+                self.assertNotIn(k, s)
+            self.assertEqual(self.run_install(cfg, "--uninstall"), {})
+
 
 class CacheGuard(unittest.TestCase):
     def guard(self, path):

@@ -39,6 +39,7 @@ savings are higher.
 | Cache rewrite warning | Warns before edits that invalidate the prompt cache | Warning only |
 
 Optional flags:
+- `--background-only`: only turn off background requests; nothing Claude sees changes
 - `--pin`: disable auto-updates
 - `--cache-1h`: force 1-hour cache (API keys only)
 

@@ -1,6 +1,6 @@
 {
   "name": "claude-lean",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Make Claude Code cheaper without changing how Claude works: background requests off, unused tool off, short skill descriptions, fast mode per session. SWE-bench Verified: same 20/33 solved, 24% faster. No new instructions for Claude, no telemetry.",
   "bin": {
     "claude-lean": "bin/cli.js"

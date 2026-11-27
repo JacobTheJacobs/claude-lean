@@ -15,6 +15,7 @@ const PARTS = ["hooks", "install.sh", "LICENSE"];
 const HELP = `claude-lean ${VERSION}: cut Claude Code costs without changing how Claude works
 
   claude-lean init [--pin] [--cache-1h]   install into ~/.claude/settings.json (backup first, re-runnable)
+  claude-lean init --background-only      only turn off background requests; nothing Claude sees changes
   claude-lean uninstall                   remove everything it added
   claude-lean doctor                      check python3, install folder, settings
 
